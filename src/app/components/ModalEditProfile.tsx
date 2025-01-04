@@ -157,6 +157,14 @@ const ModalEditProfile: React.FC<ModalEditProfileProps> = ({
                 className="w-full mt-1 p-2 border border-gray-300 rounded-md"
               />
             </div>
+            <div className="mt-4">
+              <button
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg w-full"
+                onClick={handleChangePassword}
+              >
+                Ganti Password
+              </button>
+            </div>
 
             {error && <p className="text-red-500 text-sm">{error}</p>}
 
@@ -175,14 +183,7 @@ const ModalEditProfile: React.FC<ModalEditProfileProps> = ({
               </button>
             </div>
 
-            <div className="mt-4">
-              <button
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg w-full"
-                onClick={handleChangePassword}
-              >
-                Ganti Password
-              </button>
-            </div>
+            
           </div>
         </div>
       )}
