@@ -18,40 +18,48 @@ const RegisterPage = () => {
   const handleRegister = async () => {
     const auth = getAuth();
     setErrorMessage('');  // Reset pesan error
-
+  
     // Validasi panjang password
     if (password.length < 6) {
       setErrorMessage('Password harus terdiri dari minimal 6 karakter.');
       return;
     }
-
+  
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-
-      // Simpan data pengguna ke Firestore
+  
+      // Menyimpan data pengguna ke Firestore dengan progress awal
       await setDoc(doc(db, 'users', user.uid), {
         name,
         email,
         role,
         nim: role === 'mahasiswa' ? nim : null,  // Simpan NIM hanya jika role mahasiswa
+        progress: {
+          bab1: false,
+          bab2: false,
+          bab3: false,
+          bab4: false,
+          bab5: false,
+        },  // Nilai progress bab-bab awal
       });
-
-      // Redirect setelah registrasi berhasil, sesuaikan dengan role
-      if (role === 'mahasiswa') {
-        router.push('/dashboard/mahasiswa');
-      } else if (role === 'dosen') {
-        router.push('/dashboard/dosen');
-      }
+  
+      // Redirect ke halaman login setelah registrasi berhasil
+      router.push('/auth/login');
     } catch (error: any) {
       if (error.code === 'auth/email-already-in-use') {
         setErrorMessage('Email sudah digunakan oleh pengguna lain.');
+      } else if (error.code === 'auth/invalid-email') {
+        setErrorMessage('Email tidak valid.');
+      } else if (error.code === 'auth/weak-password') {
+        setErrorMessage('Password terlalu lemah.');
       } else {
         setErrorMessage('Terjadi kesalahan saat registrasi. Silakan coba lagi.');
       }
       console.error('Error registering:', error);
     }
   };
+  
 
   return (
     <div className="flex justify-center items-center min-h-screen bg-gradient-to-r from-blue-500 to-indigo-600">
@@ -141,7 +149,7 @@ const RegisterPage = () => {
           <p className="text-center text-sm text-gray-500 mt-4">
             Already have an account?{' '}
             <Link href="/auth/login" className="text-blue-500 hover:underline">
-         Login
+              Login
             </Link>
           </p>
         </form>

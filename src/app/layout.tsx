@@ -1,35 +1,26 @@
-// src/app/layout.tsx
 'use client'
 
-import { ReactNode } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import './globals.css';
+import { ReactNode, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Header from '@/app/components/Header';
+import Footer from '@/app/components/Footer'; // Jika ada footer yang sudah Anda buat
+import './globals.css'; // Pastikan globals.css diimpor di sini
 
 interface LayoutProps {
-    children: ReactNode;
+  children: ReactNode;
 }
 
 const Layout = ({ children }: LayoutProps) => {
-  const pathname = usePathname();
+  const router = useRouter();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  // Periksa apakah halaman saat ini adalah login
-  const isLoginPage = pathname === '/auth/login' || pathname === '/auth/regist'; // Sesuaikan dengan path halaman login Anda
-
+ 
   return (
     <html lang="en">
       <body>
-        {!isLoginPage && (
-          <nav className="p-4 bg-blue-500 text-white">
-            <ul className="flex gap-4">
-              <li><Link href="/">Home</Link></li>
-              <li><Link href="/auth/login">Login</Link></li>
-              <li><Link href="/auth/regist">Regist</Link></li>
-              <li><Link href="/dashboard">Dashboard</Link></li>
-            </ul>
-          </nav>
-        )}
+        <Header />
         <main className="p-6">{children}</main>
+        <Footer /> {/* Anda bisa menggunakan Footer jika sudah dibuat */}
       </body>
     </html>
   );
