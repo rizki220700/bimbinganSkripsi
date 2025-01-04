@@ -1,17 +1,16 @@
-'use client';
-
 import { useState, useEffect } from 'react';
 import { collection, query, where, getDocs, addDoc } from 'firebase/firestore';
 import { db } from '@/firebase/firebaseconfig';
 import Select from 'react-select';
 
+// Cloudinary API Credentials
+const CLOUDINARY_UPLOAD_URL = 'https://api.cloudinary.com/v1_1/dsriaj7zd/raw/upload';  // Gantilah dengan URL yang benar
+const CLOUDINARY_UPLOAD_PRESET = 'bskroi33d';  // Gantilah dengan preset Anda
+
 interface ModalPengajuanProps {
   isOpen: boolean;
   onClose: () => void;
 }
-
-const GOOGLE_DRIVE_API_KEY = 'AIzaSyAIXGEpUS28X6uBFd64taEg3OfZ2Bj7Bpw';
-const GOOGLE_DRIVE_FOLDER_ID = '1nU8L80ZDcGZLD3vyIcpMNaYRcJ39JTik';
 
 const ModalPengajuan = ({ isOpen, onClose }: ModalPengajuanProps) => {
   const [file, setFile] = useState<File | null>(null);
@@ -39,47 +38,43 @@ const ModalPengajuan = ({ isOpen, onClose }: ModalPengajuanProps) => {
     }
   };
 
-  const handleUploadToGoogleDrive = async () => {
+  const handleUploadToCloudinary = async () => {
     if (!file || !selectedDosen) return alert('Mohon lengkapi data terlebih dahulu!');
     setIsUploading(true);
-
-    const metadata = {
-      name: file.name,
-      parents: [GOOGLE_DRIVE_FOLDER_ID]
-    };
-
+  
+    // Membaca file sebagai FormData untuk dikirim ke Cloudinary
     const formData = new FormData();
-    formData.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
     formData.append('file', file);
-
+    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);  // Pastikan preset benar
+    formData.append('folder', 'file');  // Mengatur folder 'file' di Cloudinary
+  
     try {
-      const response = await fetch(
-        `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&key=${GOOGLE_DRIVE_API_KEY}`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'multipart/related', // Tentukan tipe konten multipart
-          },
-          body: formData
-        }
-      );
-
+      // Mengunggah file ke Cloudinary
+      const response = await fetch(CLOUDINARY_UPLOAD_URL, {
+        method: 'POST',
+        body: formData,
+      });
+  
       const data = await response.json();
-      if (response.ok) {
-        const fileURL = `https://drive.google.com/file/d/${data.id}/view`;
-
+      console.log('Cloudinary Response:', data);
+  
+      if (response.ok && data.secure_url) {
+        // Mendapatkan URL file yang diupload
+        const fileURL = data.secure_url;
+  
+        // Menyimpan data pengajuan ke Firestore
         await addDoc(collection(db, 'pengajuan-bimbingan'), {
           dosen: selectedDosen,
           pesan: pesan,
           fileURL: fileURL,
           timestamp: new Date(),
         });
-
+  
         alert('Pengajuan berhasil dikirim!');
         onClose();
       } else {
-        console.error('Google Drive API Error:', data);
-        alert('Gagal mengunggah file ke Google Drive.');
+        console.error('Cloudinary API Error:', data);
+        alert(`Gagal mengunggah file ke Cloudinary. Error: ${data.error.message}`);
       }
     } catch (error) {
       console.error('Error uploading file:', error);
@@ -88,6 +83,7 @@ const ModalPengajuan = ({ isOpen, onClose }: ModalPengajuanProps) => {
       setIsUploading(false);
     }
   };
+  
 
   if (!isOpen) return null;
 
@@ -124,7 +120,7 @@ const ModalPengajuan = ({ isOpen, onClose }: ModalPengajuanProps) => {
             Batal
           </button>
           <button
-            onClick={handleUploadToGoogleDrive}
+            onClick={handleUploadToCloudinary}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg"
             disabled={isUploading}
           >

@@ -1,17 +1,18 @@
-// src/app/dashboard/mahasiswa/dashboard.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getAuth } from 'firebase/auth';
 import { db } from '@/firebase/firebaseconfig';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import ProgressSkripsi from '@/app/components/ProgressBar';
-import ModalPengajuan from '@/app/components/ModalPengajuan'; // Import modal pengajuan
+import ModalPengajuan from '@/app/components/ModalPengajuan';
+import ModalRiwayat from '@/app/components/ModalRiwayat';
+import ModalEditProfile from '@/app/components/ModalEditProfile';  // Import komponen modal edit profil
 
 interface Mentorship {
   dosen: string;
-  status: string;
+  status: 'belum mengajukan' | 'pending' | 'diterima';
 }
 
 interface UserProfile {
@@ -26,14 +27,16 @@ const DashboardMahasiswa: React.FC = () => {
   const router = useRouter();
   const [activeMentorship, setActiveMentorship] = useState<Mentorship | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState<boolean>(true); // Track loading state
-  const [isModalOpen, setIsModalOpen] = useState<boolean>(false); // State to control modal visibility
+  const [loading, setLoading] = useState<boolean>(true);
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [isRiwayatModalOpen, setIsRiwayatModalOpen] = useState<boolean>(false); // State untuk Modal Riwayat
+  const [isEditProfileModalOpen, setIsEditProfileModalOpen] = useState<boolean>(false); // Modal Edit Profil
 
   useEffect(() => {
     const storedUserProfile = localStorage.getItem('userProfile');
     if (storedUserProfile) {
       setUserProfile(JSON.parse(storedUserProfile));
-      setLoading(false); // Set loading to false when user profile is loaded from localStorage
+      setLoading(false);
     } else {
       const fetchUserData = async () => {
         const auth = getAuth();
@@ -61,25 +64,19 @@ const DashboardMahasiswa: React.FC = () => {
               userId: user.uid,
             }));
           } else {
-            // Handle case when user data does not exist
             console.error('User data not found');
           }
         }
-        setLoading(false); // Set loading to false after fetch completes
+        setLoading(false);
       };
-
       fetchUserData();
     }
 
     setActiveMentorship({
       dosen: 'Dr. John Doe',
-      status: 'active',
+      status: 'belum mengajukan',
     });
   }, []);
-
-  if (loading) {
-    return <div>Loading...</div>; // Show loading message while data is being fetched
-  }
 
   const handleOpenModal = () => {
     setIsModalOpen(true);
@@ -89,80 +86,117 @@ const DashboardMahasiswa: React.FC = () => {
     setIsModalOpen(false);
   };
 
-  return (
-    <div className="p-8">
-      <h1 className="text-2xl font-bold">Dashboard Mahasiswa</h1>
+  const handleOpenRiwayatModal = () => {
+    setIsRiwayatModalOpen(true);  // Buka Modal Riwayat
+  };
 
-      {/* Profile Section */}
-      <div className="mt-6 flex items-center space-x-6">
-        <img
-          src={userProfile?.photoURL || '/default-avatar.png'}
-          alt="Profile"
-          className="w-24 h-24 rounded-full object-cover"
-        />
-        <div>
-          <h2 className="text-xl font-semibold">{userProfile?.name}</h2>
-          <p className="text-sm text-gray-500">{userProfile?.email}</p>
-          <p className="text-sm text-gray-500">NIM: {userProfile?.nim}</p>
+  const handleCloseRiwayatModal = () => {
+    setIsRiwayatModalOpen(false); // Tutup Modal Riwayat
+  };
+
+  const handleOpenEditProfileModal = () => {
+    setIsEditProfileModalOpen(true); // Buka Modal Edit Profil
+  };
+
+  const handleCloseEditProfileModal = () => {
+    setIsEditProfileModalOpen(false); // Tutup Modal Edit Profil
+  };
+
+  const handleCancelSubmission = async () => {
+    setActiveMentorship((prev) => prev ? { ...prev, status: 'belum mengajukan' } : null);
+  };
+
+  if (loading) {
+    return <div className="flex items-center justify-center min-h-screen text-lg font-semibold">Loading...</div>;
+  }
+
+  return (
+    <div className="p-4 sm:p-8 space-y-8 bg-gray-50 min-h-screen">
+      <header className="flex flex-col sm:flex-row justify-between items-center bg-white p-4 sm:p-6 rounded-lg shadow-md">
+        <h1 className="text-2xl sm:text-3xl font-bold">Dashboard Mahasiswa</h1>
+      </header>
+
+      {/* Profil Mahasiswa */}
+      <section className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
+        <div className="flex items-center space-x-4">
+          <img 
+            src={userProfile?.photoURL || '/default-profile.png'} 
+            alt="Profile Picture" 
+            className="w-16 h-16 rounded-full object-cover" 
+          />
+          <div>
+            <p className="text-lg font-medium">{userProfile?.name}</p>
+            <p className="text-sm text-gray-500">{userProfile?.nim}</p>
+            <p className="text-sm text-gray-500">{userProfile?.email}</p>
+          </div>
           <button
-            className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg"
-            onClick={() => router.push('/dashboard/mahasiswa/edit-profile')}
+            className="ml-auto px-4 py-2 bg-indigo-600 text-white rounded-lg"
+            onClick={handleOpenEditProfileModal} // Buka modal edit profil
           >
             Edit Profil
           </button>
         </div>
-      </div>
+      </section>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Card: Bimbingan Aktif */}
-        <div className="p-4 bg-blue-500 text-white rounded-lg shadow-md">
-          <h2 className="text-lg font-semibold">Bimbingan Aktif</h2>
+      <section className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="p-4 sm:p-6 bg-white rounded-lg shadow-md">
+          <h2 className="text-lg sm:text-xl font-semibold mb-4">Bimbingan Aktif</h2>
           {activeMentorship ? (
-            <div>
-              <p>{activeMentorship.dosen}</p>
-              <p>Status: {activeMentorship.status}</p>
-            </div>
+            <p className="text-base sm:text-lg">{activeMentorship.dosen} - {activeMentorship.status}</p>
           ) : (
-            <p>Tidak ada bimbingan aktif.</p>
+            <p className="text-base sm:text-lg text-gray-500">Tidak ada bimbingan aktif.</p>
           )}
         </div>
 
-        {/* Card: Pengajuan */}
-        <div className="p-4 bg-green-500 text-white rounded-lg shadow-md">
-          <h2 className="text-lg font-semibold">Pengajuan</h2>
-          <p>Status: Menunggu persetujuan</p>
-          {/* Button to open modal */}
-          <button
-            onClick={handleOpenModal}
-            className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg"
-          >
-            Ajukan Bimbingan
-          </button>
+        <div className="p-4 sm:p-6 bg-white rounded-lg shadow-md">
+          <h2 className="text-lg sm:text-xl font-semibold mb-4">Pengajuan</h2>
+          <p className="text-base sm:text-lg">
+            Status: {activeMentorship?.status}
+          </p>
+          {activeMentorship?.status === 'belum mengajukan' && (
+            <button
+              className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg w-full"
+              onClick={handleOpenModal}
+            >
+              Ajukan Bimbingan
+            </button>
+          )}
+          {activeMentorship?.status === 'pending' && (
+            <button
+              className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg w-full"
+              onClick={handleCancelSubmission}
+            >
+              Batalkan Pengajuan
+            </button>
+          )}
         </div>
-      </div>
 
-      {/* Komponen Progress Skripsi */}
-      {userProfile && (
-        <ProgressSkripsi userId={userProfile.userId} />
-      )}
+        <ProgressSkripsi userId={userProfile?.userId || ''} />
+      </section>
 
-      {/* CTA Section */}
-      <div className="mt-6">
-        <button
-          className="px-4 py-2 bg-indigo-600 text-white rounded-lg"
-          onClick={() => router.push('/dashboard/mahasiswa/pengajuan')}
-        >
-          Ajukan Dosen Pembimbing
-        </button>
-        <button
-          className="ml-4 px-4 py-2 bg-gray-600 text-white rounded-lg"
-          onClick={() => router.push('/dashboard/mahasiswa/riwayat')}
-        >
-          Lihat Riwayat Bimbingan
-        </button>
-      </div>
+      {/* Tombol untuk membuka Modal Riwayat */}
+      <button
+        className="px-4 py-2 bg-green-600 text-white rounded-lg"
+        onClick={handleOpenRiwayatModal}
+      >
+        Lihat Riwayat Bimbingan
+      </button>
 
-      {/* Modal Pengajuan */}
+      {/* ModalRiwayat */}
+      <ModalRiwayat 
+        isOpen={isRiwayatModalOpen} 
+        onClose={handleCloseRiwayatModal} 
+        userId={userProfile?.userId || ''}  // Pastikan userId ada sebelum dikirim
+      />
+
+      {/* Modal Edit Profil */}
+      <ModalEditProfile 
+        isOpen={isEditProfileModalOpen} 
+        onClose={handleCloseEditProfileModal} 
+        userProfile={userProfile} 
+        setUserProfile={setUserProfile} 
+      />
+
       <ModalPengajuan isOpen={isModalOpen} onClose={handleCloseModal} />
     </div>
   );
