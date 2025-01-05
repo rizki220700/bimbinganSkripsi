@@ -1,11 +1,8 @@
 import { useState, useEffect } from 'react';
 import { collection, query, where, getDocs, addDoc } from 'firebase/firestore';
-import { db } from '@/firebase/firebaseconfig';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { db, storage } from '@/firebase/firebaseconfig';
 import Select from 'react-select';
-
-// Cloudinary API Credentials
-const CLOUDINARY_UPLOAD_URL = 'https://api.cloudinary.com/v1_1/dsriaj7zd/raw/upload';  // Gantilah dengan URL yang benar
-const CLOUDINARY_UPLOAD_PRESET = 'bskroi33d';  // Gantilah dengan preset Anda
 
 interface ModalPengajuanProps {
   isOpen: boolean;
@@ -23,9 +20,9 @@ const ModalPengajuan = ({ isOpen, onClose }: ModalPengajuanProps) => {
     const fetchDosen = async () => {
       const q = query(collection(db, 'users'), where('role', '==', 'dosen'));
       const querySnapshot = await getDocs(q);
-      const dosenData: any[] = querySnapshot.docs.map(doc => ({
+      const dosenData = querySnapshot.docs.map(doc => ({
         value: doc.id,
-        label: doc.data().name
+        label: doc.data().name,
       }));
       setDosenList(dosenData);
     };
@@ -38,52 +35,47 @@ const ModalPengajuan = ({ isOpen, onClose }: ModalPengajuanProps) => {
     }
   };
 
-  const handleUploadToCloudinary = async () => {
-    if (!file || !selectedDosen) return alert('Mohon lengkapi data terlebih dahulu!');
+  const handleUploadToFirebase = async () => {
+    if (!file || !selectedDosen) {
+      alert('Mohon lengkapi data terlebih dahulu!');
+      return;
+    }
     setIsUploading(true);
   
-    // Membaca file sebagai FormData untuk dikirim ke Cloudinary
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);  // Pastikan preset benar
-    formData.append('folder', 'file');  // Mengatur folder 'file' di Cloudinary
-  
     try {
-      // Mengunggah file ke Cloudinary
-      const response = await fetch(CLOUDINARY_UPLOAD_URL, {
-        method: 'POST',
-        body: formData,
+      const storageRef = ref(storage, `bimbingan/${selectedDosen}/${file.name}`);
+      await uploadBytes(storageRef, file);
+      const fileURL = await getDownloadURL(storageRef);
+  
+      // Mengambil userId mahasiswa dari localStorage
+      const storedProfile = localStorage.getItem('userProfile');
+      const userProfile = storedProfile ? JSON.parse(storedProfile) : null;
+      const userId = userProfile?.userId; // Mengganti mahasiswaId dengan userId
+
+      if (!userId) {
+        alert('Gagal mendapatkan data mahasiswa.');
+        return;
+      }
+  
+      // Menambahkan data pengajuan termasuk UUID user
+      await addDoc(collection(db, 'pengajuan-bimbingan'), {
+        dosen: selectedDosen,
+        userId: userId, // Menyimpan UUID user
+        pesan: pesan,
+        fileURL: fileURL,
+        status: 'pending',
+        timestamp: new Date(),
       });
   
-      const data = await response.json();
-      console.log('Cloudinary Response:', data);
-  
-      if (response.ok && data.secure_url) {
-        // Mendapatkan URL file yang diupload
-        const fileURL = data.secure_url;
-  
-        // Menyimpan data pengajuan ke Firestore
-        await addDoc(collection(db, 'pengajuan-bimbingan'), {
-          dosen: selectedDosen,
-          pesan: pesan,
-          fileURL: fileURL,
-          timestamp: new Date(),
-        });
-  
-        alert('Pengajuan berhasil dikirim!');
-        onClose();
-      } else {
-        console.error('Cloudinary API Error:', data);
-        alert(`Gagal mengunggah file ke Cloudinary. Error: ${data.error.message}`);
-      }
+      alert('Pengajuan berhasil dikirim!');
+      onClose(); 
     } catch (error) {
-      console.error('Error uploading file:', error);
+      console.error('Error during file upload:', error);
       alert('Terjadi kesalahan saat mengunggah file.');
     } finally {
       setIsUploading(false);
     }
   };
-  
 
   if (!isOpen) return null;
 
@@ -96,7 +88,7 @@ const ModalPengajuan = ({ isOpen, onClose }: ModalPengajuanProps) => {
           <label className="block text-sm font-medium">Pilih Dosen Pembimbing</label>
           <Select
             options={dosenList}
-            onChange={(selectedOption) => setSelectedDosen(selectedOption?.label || '')}
+            onChange={(selectedOption) => setSelectedDosen(selectedOption?.value || '')}
           />
         </div>
 
@@ -120,7 +112,7 @@ const ModalPengajuan = ({ isOpen, onClose }: ModalPengajuanProps) => {
             Batal
           </button>
           <button
-            onClick={handleUploadToCloudinary}
+            onClick={handleUploadToFirebase}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg"
             disabled={isUploading}
           >

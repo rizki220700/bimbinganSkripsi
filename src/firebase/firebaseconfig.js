@@ -1,5 +1,5 @@
-// firebase/firebaseConfig.js
-import { initializeApp } from 'firebase/app';
+// firebase/firebaseConfig.ts
+import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
@@ -13,11 +13,12 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-if (!firebaseConfig.apiKey || !firebaseConfig.authDomain || !firebaseConfig.projectId || !firebaseConfig.storageBucket || !firebaseConfig.messagingSenderId || !firebaseConfig.appId) {
+if (!firebaseConfig.apiKey) {
   throw new Error('Firebase configuration is missing required environment variables.');
 }
 
-const app = initializeApp(firebaseConfig);
+// Cegah multiple instance Firebase
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/firebase/firebaseconfig';
 import { getAuth, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 interface UserProfile {
   name: string;
@@ -28,32 +29,43 @@ const ModalEditProfile: React.FC<ModalEditProfileProps> = ({
 }) => {
   const [name, setName] = useState<string>(userProfile?.name || '');
   const [email, setEmail] = useState<string>(userProfile?.email || '');
-  const [photoURL, setPhotoURL] = useState<string>(userProfile?.photoURL || '');
-  const [password, setPassword] = useState<string>(''); // Password lama
-  const [newPassword, setNewPassword] = useState<string>(''); // Password baru
-  const [confirmNewPassword, setConfirmNewPassword] = useState<string>(''); // Konfirmasi password baru
+  const [nim, setNim] = useState<string>(userProfile?.nim || '');
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [password, setPassword] = useState<string>('');
+  const [newPassword, setNewPassword] = useState<string>('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
 
+  const handleUploadPhoto = async (): Promise<string | null> => {
+    if (!photoFile || !userProfile) return userProfile?.photoURL || null;
+    const storage = getStorage();
+    const photoRef = ref(storage, `profilePictures/${userProfile.userId}`);
+    await uploadBytes(photoRef, photoFile);
+    return await getDownloadURL(photoRef);
+  };
+
   const handleSaveChanges = async () => {
-    if (userProfile) {
-      const userRef = doc(db, 'users', userProfile.userId);
-      await updateDoc(userRef, {
-        name,
-        email,
-        photoURL,
-      });
-
-      // Update local state and localStorage
-      const updatedProfile = { ...userProfile, name, email, photoURL };
-      setUserProfile(updatedProfile);
-      localStorage.setItem('userProfile', JSON.stringify(updatedProfile));
-
-      onClose(); // Close modal after saving
+    if (!userProfile) {
+      setError('Profil tidak tersedia');
+      return;
     }
+    const photoURL = await handleUploadPhoto();
+    const userRef = doc(db, 'users', userProfile.userId);
+    await updateDoc(userRef, {
+      name,
+      email, 
+      nim,
+      photoURL,
+    });
+
+    const updatedProfile = { ...userProfile, name, email, nim, photoURL };
+    setUserProfile(updatedProfile);
+    localStorage.setItem('userProfile', JSON.stringify(updatedProfile));
+
+    onClose();
   };
 
   const handleChangePassword = async () => {
-    // Validasi jika password baru dan konfirmasi password cocok
     if (newPassword !== confirmNewPassword) {
       setError('Password baru dan konfirmasi tidak cocok');
       return;
@@ -70,15 +82,12 @@ const ModalEditProfile: React.FC<ModalEditProfileProps> = ({
     if (user && password && newPassword) {
       try {
         const credential = EmailAuthProvider.credential(user.email || '', password);
-        await reauthenticateWithCredential(user, credential); // Reauthenticate the user to change password
-        await updatePassword(user, newPassword); // Update the password
-        setError(null); // Clear any previous error
-
-        // Update local profile if necessary
-        // Set the updated profile information to localStorage
-        onClose(); // Close modal after password change
+        await reauthenticateWithCredential(user, credential);
+        await updatePassword(user, newPassword);
+        setError(null);
+        alert('Password berhasil diubah');
+        onClose();
       } catch (error: any) {
-        // Menangani error yang mungkin terjadi saat reauthenticate atau update password
         if (error.code === 'auth/wrong-password') {
           setError('Password lama salah. Coba lagi.');
         } else {
@@ -92,7 +101,7 @@ const ModalEditProfile: React.FC<ModalEditProfileProps> = ({
 
   return (
     <>
-      {isOpen && (
+      {isOpen && userProfile && (
         <div className="fixed inset-0 bg-gray-500 bg-opacity-50 flex justify-center items-center z-50">
           <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-lg">
             <h2 className="text-xl font-semibold mb-4">Edit Profil</h2>
@@ -115,12 +124,19 @@ const ModalEditProfile: React.FC<ModalEditProfileProps> = ({
               />
             </div>
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700">Foto Profil</label>
+              <label className="block text-sm font-medium text-gray-700">Email</label>
               <input
                 type="text"
-                value={photoURL}
-                onChange={(e) => setPhotoURL(e.target.value)}
-                placeholder="URL Foto Profil"
+                value={nim}
+                onChange={(e) => setNim(e.target.value)}
+                className="w-full mt-1 p-2 border border-gray-300 rounded-md"
+              />
+            </div>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700">Foto Profil</label>
+              <input
+                type="file"
+                onChange={(e) => setPhotoFile(e.target.files?.[0] || null)}
                 className="w-full mt-1 p-2 border border-gray-300 rounded-md"
               />
             </div>
@@ -131,7 +147,6 @@ const ModalEditProfile: React.FC<ModalEditProfileProps> = ({
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Masukkan password lama"
                 className="w-full mt-1 p-2 border border-gray-300 rounded-md"
               />
             </div>
@@ -142,7 +157,6 @@ const ModalEditProfile: React.FC<ModalEditProfileProps> = ({
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Masukkan password baru"
                 className="w-full mt-1 p-2 border border-gray-300 rounded-md"
               />
             </div>
@@ -153,37 +167,25 @@ const ModalEditProfile: React.FC<ModalEditProfileProps> = ({
                 type="password"
                 value={confirmNewPassword}
                 onChange={(e) => setConfirmNewPassword(e.target.value)}
-                placeholder="Konfirmasi password baru"
                 className="w-full mt-1 p-2 border border-gray-300 rounded-md"
               />
             </div>
-            <div className="mt-4">
-              <button
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg w-full"
-                onClick={handleChangePassword}
-              >
-                Ganti Password
-              </button>
-            </div>
 
-            {error && <p className="text-red-500 text-sm">{error}</p>}
+            <button
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg w-full"
+              onClick={handleChangePassword}
+            >
+              Ganti Password
+            </button>
 
-            <div className="flex justify-between mt-4">
-              <button
-                className="px-4 py-2 bg-gray-400 text-white rounded-lg"
-                onClick={onClose}
-              >
-                Batal
-              </button>
-              <button
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg"
-                onClick={handleSaveChanges}
-              >
-                Simpan
-              </button>
-            </div>
+            <button
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg w-full mt-4"
+              onClick={handleSaveChanges}
+            >
+              Simpan Perubahan
+            </button>
 
-            
+            {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
           </div>
         </div>
       )}
