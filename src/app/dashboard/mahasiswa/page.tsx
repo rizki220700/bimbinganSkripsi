@@ -1,5 +1,5 @@
 'use client';
-
+import Layout from '@/app/components/AuthWrapper';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getAuth } from 'firebase/auth';
@@ -9,6 +9,7 @@ import ProgressSkripsi from '@/app/components/ProgressBar';
 import ModalPengajuan from '@/app/components/ModalPengajuan';
 import ModalRiwayat from '@/app/components/ModalRiwayat';
 import ModalEditProfile from '@/app/components/ModalEditProfile';  // Import komponen modal edit profil
+import AuthWrapper from '@/app/components/AuthWrapper';
 
 interface Mentorship {
   dosen: string;
@@ -111,6 +112,8 @@ const DashboardMahasiswa: React.FC = () => {
   }
 
   return (
+
+    <AuthWrapper allowedRoles={['mahasiswa']}>
     <div className="p-4 sm:p-8 space-y-8 bg-gray-50 min-h-screen">
       <header className="flex flex-col sm:flex-row justify-between items-center bg-white p-4 sm:p-6 rounded-lg shadow-md">
         <h1 className="text-2xl sm:text-3xl font-bold">Dashboard Mahasiswa</h1>
@@ -199,6 +202,7 @@ const DashboardMahasiswa: React.FC = () => {
 
       <ModalPengajuan isOpen={isModalOpen} onClose={handleCloseModal} />
     </div>
+    </AuthWrapper>
   );
 };
 

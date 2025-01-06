@@ -1,29 +1,26 @@
-'use client'
+// src/app/layout.tsx (Server-side layout, tanpa 'use client' directive)
 
-import { ReactNode, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { ReactNode } from 'react';
 import Header from '@/app/components/Header';
-import Footer from '@/app/components/Footer'; // Jika ada footer yang sudah Anda buat
-import './globals.css'; // Pastikan globals.css diimpor di sini
+import './globals.css';
 
-interface LayoutProps {
-  children: ReactNode;
-}
-
-const Layout = ({ children }: LayoutProps) => {
-  const router = useRouter();
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-
- 
-  return (
-    <html lang="en">
-      <body>
-        <Header />
-        <main className="p-6">{children}</main>
-        <Footer /> {/* Anda bisa menggunakan Footer jika sudah dibuat */}
-      </body>
-    </html>
-  );
+// `metadata` hanya untuk server-side layout
+export const metadata = {
+    title: 'Bimbingan Online',
+    description: 'Platform Bimbingan Online untuk Mahasiswa dan Dosen',
 };
 
-export default Layout;
+interface LayoutProps {
+    children: ReactNode;
+}
+
+export default function RootLayout({ children }: LayoutProps) {
+    return (
+        <html lang="en">
+            <body>
+                <Header />
+                <main className="p-6">{children}</main>
+            </body>
+        </html>
+    );
+}

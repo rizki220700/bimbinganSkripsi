@@ -1,12 +1,13 @@
 // src/app/pages/dashboard/dosen.tsx
 'use client';
-
+import Layout from '@/app/components/AuthWrapper';
 import { useState, useEffect } from 'react';
 import { getAuth } from 'firebase/auth';
 import { db } from '@/firebase/firebaseconfig';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import ModalEditProfile from '@/app/components/ModalEditProfile';
 import ModalRiwayat from '@/app/components/ModalRiwayat';
+import AuthWrapper from '@/app/components/AuthWrapper';
 
 interface UserProfile {
   name: string;
@@ -103,6 +104,7 @@ const DosenDashboard: React.FC = () => {
   }
 
   return (
+    <AuthWrapper allowedRoles={['mahasiswa']}>
     <div className="p-4 sm:p-8 space-y-8 bg-gray-50 min-h-screen">
       <header className="flex flex-col sm:flex-row justify-between items-center bg-white p-4 sm:p-6 rounded-lg shadow-md">
         <h1 className="text-2xl sm:text-3xl font-bold">Dashboard Dosen</h1>
@@ -172,6 +174,7 @@ const DosenDashboard: React.FC = () => {
         userId={userProfile?.userId || ''} 
       />
     </div>
+    </AuthWrapper>
   );
 };
 
