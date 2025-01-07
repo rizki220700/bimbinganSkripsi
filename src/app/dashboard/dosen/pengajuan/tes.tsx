@@ -1,0 +1,1 @@
+<td className="p-3 border border-gray-200">{mahasiswaNames[item.userId] || 'Loading...'}</td> {/* Nama mahasiswa */}
