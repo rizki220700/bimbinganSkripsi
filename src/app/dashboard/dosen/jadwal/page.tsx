@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { db } from '@/firebase/firebaseconfig';
-import { collection, deleteDoc, doc, updateDoc, onSnapshot } from 'firebase/firestore';
+import { collection, deleteDoc, doc, updateDoc, onSnapshot, getDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import ModalJadwalBimbingan from '@/app/components/ModalJadwalBimbingan';
 import ModalEditJadwalBimbingan from '@/app/components/ModalEditJadwalBimbingan'; // Import ModalEditJadwalBimbingan
@@ -32,6 +32,7 @@ const JadwalBimbinganPage = () => {
   const [selectedJadwalId, setSelectedJadwalId] = useState<string | null>(null); // State for selected jadwal ID
   const [dosenId, setDosenId] = useState('');
   const [jadwal, setJadwal] = useState<JadwalBimbingan[]>([]);
+  const [mahasiswaNames, setMahasiswaNames] = useState<{ [key: string]: string }>({}); // State for mahasiswa names
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
@@ -48,10 +49,23 @@ const JadwalBimbinganPage = () => {
         ...(doc.data() as JadwalBimbingan)
       }));
       setJadwal(jadwalData);
+
+      // Ambil nama mahasiswa berdasarkan mahasiswaId
+      jadwalData.forEach(async (item) => {
+        if (!mahasiswaNames[item.mahasiswaId]) { // Ambil data mahasiswa hanya jika belum ada
+          const mahasiswaDoc = await getDoc(doc(db, 'users', item.mahasiswaId));
+          if (mahasiswaDoc.exists()) {
+            setMahasiswaNames(prevState => ({
+              ...prevState,
+              [item.mahasiswaId]: mahasiswaDoc.data().name // Ganti 'name' sesuai dengan field nama di collection users
+            }));
+          }
+        }
+      });
     });
 
     return () => unsubscribe();
-  }, []);
+  }, []); // Hanya dijalankan sekali saat pertama kali mount
 
   const handleOpenModal = () => setIsModalOpen(true);
   const handleCloseModal = () => setIsModalOpen(false);
@@ -82,7 +96,7 @@ const JadwalBimbinganPage = () => {
     if (!id) return;
     setLoading(true);
     try {
-      await updateDoc(doc(db, 'jadwal-bimbingan', id), {});
+      await updateDoc(doc(db, 'jadwal-bimbingan', id), {}); // Implement the actual update logic here
     } catch (error) {
       console.error('Error updating:', error);
     } finally {
@@ -115,7 +129,7 @@ const JadwalBimbinganPage = () => {
           <thead>
             <tr className="bg-gray-100 text-left text-sm font-semibold">
               <th className="p-3 border border-gray-300">No</th>
-              <th className="p-3 border border-gray-300">Mahasiswa ID</th>
+              <th className="p-3 border border-gray-300">Mahasiswa</th>
               <th className="p-3 border border-gray-300">Jenis</th>
               <th className="p-3 border border-gray-300">Waktu/Tanggal</th>
               <th className="p-3 border border-gray-300">Location</th>
@@ -129,7 +143,7 @@ const JadwalBimbinganPage = () => {
             {jadwal.map((item, index) => (
               <tr key={item.id} className="hover:bg-gray-50 transition duration-300 text-sm">
                 <td className="p-3 border border-gray-200">{index + 1}</td>
-                <td className="p-3 border border-gray-200">{item.mahasiswaId}</td>
+                <td className="p-3 border border-gray-200">{mahasiswaNames[item.mahasiswaId] || 'Loading...'}</td>
                 <td className="p-3 border border-gray-200">{item.jenis}</td>
                 <td className="p-3 border border-gray-200">{item.timestamp ? new Date(item.timestamp.seconds * 1000).toLocaleString() : 'N/A'}</td>
                 <td className="p-3 border border-gray-200">{item.location}</td>
