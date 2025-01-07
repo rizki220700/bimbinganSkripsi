@@ -1,10 +1,9 @@
 'use client';
-import Layout from '@/app/components/AuthWrapper';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getAuth } from 'firebase/auth';
 import { db } from '@/firebase/firebaseconfig';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, collection, getDocs, query, where, deleteDoc } from 'firebase/firestore';
 import ProgressSkripsi from '@/app/components/ProgressBar';
 import ModalPengajuan from '@/app/components/ModalPengajuan';
 import ModalRiwayat from '@/app/components/ModalRiwayat';
@@ -26,12 +25,17 @@ interface UserProfile {
 
 const DashboardMahasiswa: React.FC = () => {
   const router = useRouter();
-  const [activeMentorship, setActiveMentorship] = useState<Mentorship | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isRiwayatModalOpen, setIsRiwayatModalOpen] = useState<boolean>(false); // State untuk Modal Riwayat
   const [isEditProfileModalOpen, setIsEditProfileModalOpen] = useState<boolean>(false); // Modal Edit Profil
+  const [dosenName, setDosenName] = useState<string>(''); //dosen pembimbing
+
+  const [jadwalBimbingan, setJadwalBimbingan] = useState<any[]>([]);
+  const [loadingJadwal, setLoadingJadwal] = useState<boolean>(true);
+
+
 
   useEffect(() => {
     const storedUserProfile = localStorage.getItem('userProfile');
@@ -73,11 +77,66 @@ const DashboardMahasiswa: React.FC = () => {
       fetchUserData();
     }
 
-    setActiveMentorship({
-      dosen: 'Dr. John Doe',
-      status: 'belum mengajukan',
-    });
-  }, []);
+
+      const fetchDosen = async () => {
+        if (userProfile?.userId) {
+          try {
+            // Cari pengajuan bimbingan berdasarkan userId
+            const q = query(collection(db, 'pengajuan-bimbingan'), where('userId', '==', userProfile.userId));
+            const querySnapshot = await getDocs(q);
+    
+            if (!querySnapshot.empty) {
+              // Ambil pengajuan bimbingan pertama yang ditemukan
+              const pengajuanData = querySnapshot.docs[0].data();
+              const dosenId = pengajuanData.dosen; // Dosen adalah ID dari dokumen di koleksi 'users'
+    
+              // Ambil data dosen menggunakan dosenId
+              const dosenDocRef = doc(db, 'users', dosenId);
+              const dosenDoc = await getDoc(dosenDocRef);
+    
+              if (dosenDoc.exists()) {
+                const dosenData = dosenDoc.data();
+                setDosenName(dosenData?.name || 'Dosen Tidak Ditemukan');
+              } else {
+                console.log('Dosen tidak ditemukan');
+              }
+            } else {
+              console.log('Tidak ada pengajuan bimbingan ditemukan untuk mahasiswa ini');
+            }
+          } catch (error) {
+            console.error('Error fetching dosen data:', error);
+          }
+        }
+      };
+    
+      fetchDosen();
+
+      const fetchJadwalBimbingan = async () => {
+        if (!userProfile?.userId) {
+          return;
+        }
+        setLoadingJadwal(true);
+        try {
+          const q = query(
+            collection(db, 'jadwal-bimbingan'),
+            where('userId', '==', userProfile.userId)
+          );
+          const querySnapshot = await getDocs(q);
+          
+          const jadwalData = querySnapshot.docs.map(doc => doc.data());
+          setJadwalBimbingan(jadwalData);
+        } catch (error) {
+          console.error('Error fetching jadwal bimbingan:', error);
+        } finally {
+          setLoadingJadwal(false);
+        }
+      };
+    
+      if (userProfile?.userId) {
+        fetchJadwalBimbingan();
+      }
+    }, [userProfile?.userId]); // Jalankan jika userProfile berubah
+    
 
   const handleOpenModal = () => {
     setIsModalOpen(true);
@@ -103,9 +162,6 @@ const DashboardMahasiswa: React.FC = () => {
     setIsEditProfileModalOpen(false); // Tutup Modal Edit Profil
   };
 
-  const handleCancelSubmission = async () => {
-    setActiveMentorship((prev) => prev ? { ...prev, status: 'belum mengajukan' } : null);
-  };
 
   if (loading) {
     return <div className="flex items-center justify-center min-h-screen text-lg font-semibold">Loading...</div>;
@@ -142,48 +198,68 @@ const DashboardMahasiswa: React.FC = () => {
       </section>
 
       <section className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <div className="p-4 sm:p-6 bg-white rounded-lg shadow-md">
-          <h2 className="text-lg sm:text-xl font-semibold mb-4">Bimbingan Aktif</h2>
-          {activeMentorship ? (
-            <p className="text-base sm:text-lg">{activeMentorship.dosen} - {activeMentorship.status}</p>
-          ) : (
-            <p className="text-base sm:text-lg text-gray-500">Tidak ada bimbingan aktif.</p>
-          )}
-        </div>
+      <div className="p-4 sm:p-6 bg-white rounded-lg shadow-md">
+        <h2 className="text-lg sm:text-xl font-semibold mb-4 text-center">DOSEN PEMBIMBING</h2>
+        <p className="text-base sm:text-lg text-center">{dosenName || 'Belum ada dosen pembimbing'}</p>
+      </div>
+
+
 
         <div className="p-4 sm:p-6 bg-white rounded-lg shadow-md">
-          <h2 className="text-lg sm:text-xl font-semibold mb-4">Pengajuan</h2>
+          <h2 className="text-lg sm:text-xl font-semibold mb-4 text-center">PENGAJUAN BIMBINGAN</h2>
           <p className="text-base sm:text-lg">
-            Status: {activeMentorship?.status}
           </p>
-          {activeMentorship?.status === 'belum mengajukan' && (
             <button
               className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg w-full"
               onClick={handleOpenModal}
             >
               Ajukan Bimbingan
             </button>
-          )}
-          {activeMentorship?.status === 'pending' && (
-            <button
-              className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg w-full"
-              onClick={handleCancelSubmission}
-            >
-              Batalkan Pengajuan
-            </button>
-          )}
+           <button
+        className="px-4 py-2 mt-4 bg-green-600 text-white rounded-lg w-full"
+        onClick={handleOpenRiwayatModal}
+      >
+        Lihat Riwayat Bimbingan
+      </button>
+
+        
         </div>
 
         <ProgressSkripsi userId={userProfile?.userId || ''} />
       </section>
 
+      <section className="bg-white p-6 rounded-lg shadow-md">
+  <h2 className="text-xl font-semibold mb-4">Jadwal Bimbingan</h2>
+  {loadingJadwal ? (
+    <div>Loading jadwal...</div>
+  ) : jadwalBimbingan.length === 0 ? (
+    <p>Tidak ada jadwal bimbingan.</p>
+  ) : (
+    <table className="w-full table-auto border-collapse">
+      <thead>
+        <tr className="bg-gray-100">
+          <th className="px-4 py-2 text-left">Tanggal</th>
+          <th className="px-4 py-2 text-left">Waktu</th>
+          <th className="px-4 py-2 text-left">Tempat</th>
+          <th className="px-4 py-2 text-left">Jenis Bimbingan</th>
+        </tr>
+      </thead>
+      <tbody>
+        {jadwalBimbingan.map((jadwal, index) => (
+          <tr key={index} className="border-b">
+            <td className="px-4 py-2">{new Date(jadwal.tanggal).toLocaleDateString()}</td>
+            <td className="px-4 py-2">{jadwal.waktu}</td>
+            <td className="px-4 py-2">{jadwal.tempat}</td>
+            <td className="px-4 py-2">{jadwal.jenisBimbingan}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )}
+</section>
+
       {/* Tombol untuk membuka Modal Riwayat */}
-      <button
-        className="px-4 py-2 bg-green-600 text-white rounded-lg"
-        onClick={handleOpenRiwayatModal}
-      >
-        Lihat Riwayat Bimbingan
-      </button>
+     
 
       {/* ModalRiwayat */}
       <ModalRiwayat 

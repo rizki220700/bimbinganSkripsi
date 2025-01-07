@@ -37,7 +37,7 @@ const ProgressSkripsi = ({ userId }: { userId: string }) => {
 
     return (
         <div className="mt-6 p-4 bg-white rounded-lg shadow-lg">
-            <h2 className="text-lg font-semibold mb-4">Progress Skripsi</h2>
+            <h2 className="text-lg font-semibold mb-4 text-center">PROGRESS SKRIPSI</h2>
             <div className="w-full bg-gray-200 rounded-full h-6 mb-4">
                 <div
                     className="bg-blue-500 h-6 rounded-full transition-all"

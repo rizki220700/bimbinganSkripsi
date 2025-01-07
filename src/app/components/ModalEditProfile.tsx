@@ -124,7 +124,7 @@ const ModalEditProfile: React.FC<ModalEditProfileProps> = ({
               />
             </div>
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700">Email</label>
+              <label className="block text-sm font-medium text-gray-700">nim</label>
               <input
                 type="text"
                 value={nim}

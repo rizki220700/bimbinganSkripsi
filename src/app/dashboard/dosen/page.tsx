@@ -1,12 +1,11 @@
-// src/app/pages/dashboard/dosen.tsx
 'use client';
-import Layout from '@/app/components/AuthWrapper';
+
 import { useState, useEffect } from 'react';
 import { getAuth } from 'firebase/auth';
 import { db } from '@/firebase/firebaseconfig';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
-import ModalEditProfile from '@/app/components/ModalEditProfile';
-import ModalRiwayat from '@/app/components/ModalRiwayat';
+import ModalEditProfile from '@/app/components/ModalEditProfile'; 
+import CardCollection from '@/app/components/CardCollection'; 
 import AuthWrapper from '@/app/components/AuthWrapper';
 
 interface UserProfile {
@@ -28,152 +27,171 @@ interface Mahasiswa {
 const DosenDashboard: React.FC = () => {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [isEditProfileModalOpen, setIsEditProfileModalOpen] = useState<boolean>(false);
-  const [isRiwayatModalOpen, setIsRiwayatModalOpen] = useState<boolean>(false);
   const [mahasiswaList, setMahasiswaList] = useState<Mahasiswa[]>([]);
+  const [pengajuanCount, setPengajuanCount] = useState<number>(0);
+  const [jadwalCount, setJadwalCount] = useState<number>(0);
+  const [isEditProfileModalOpen, setIsEditProfileModalOpen] = useState<boolean>(false);
 
   useEffect(() => {
-    const fetchUserData = async () => {
-      const auth = getAuth();
-      const user = auth.currentUser;
-
-      if (user) {
-        const docRef = doc(db, 'users', user.uid);
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists()) {
-          const userData = docSnap.data();
-          setUserProfile({
-            name: userData.name,
-            email: userData.email,
-            nim: userData.nim,
-            photoURL: userData.photoURL || null,
-            userId: user.uid,
-          });
-        } else {
-          console.error('User data not found');
-        }
-      }
+    const storedUserProfile = localStorage.getItem('userProfile');
+    if (storedUserProfile) {
+      setUserProfile(JSON.parse(storedUserProfile));
       setLoading(false);
-    };
-
-    fetchUserData();
+    } else {
+      const fetchUserData = async () => {
+        const auth = getAuth();
+        const user = auth.currentUser;
+        if (user) {
+          const docRef = doc(db, 'users', user.uid);
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            const userData = docSnap.data();
+            const userProfileData = {
+              name: userData.name,
+              email: userData.email,
+              nim: userData.nim,
+              photoURL: userData.photoURL || null,
+              userId: user.uid,
+            };
+            setUserProfile(userProfileData);
+            localStorage.setItem('userProfile', JSON.stringify(userProfileData));
+          }
+        }
+      };
+      fetchUserData();
+    }
   }, []);
 
   useEffect(() => {
-    const fetchMahasiswaData = async () => {
-      if (userProfile?.userId) {
-        const q = query(collection(db, 'mahasiswa'), where('dosenId', '==', userProfile.userId));
+    if (userProfile?.userId) {
+      const fetchMahasiswaData = async () => {
+        const q = query(
+            collection(db, 'pengajuan-bimbingan'), 
+            where('dosen', '==', userProfile.userId),
+            where('status', '==', 'accepted') 
+        );
+    
         const querySnapshot = await getDocs(q);
         const mahasiswaData: Mahasiswa[] = [];
+        const uniqueNIMs = new Set<string>(); // Menggunakan Set untuk mencegah duplikasi
+    
         querySnapshot.forEach(doc => {
-          const data = doc.data();
-          mahasiswaData.push({
-            id: doc.id,
-            name: data.name,
-            nim: data.nim,
-            email: data.email,
-            photoURL: data.photoURL || null,
-          });
+            const data = doc.data();
+            if (!uniqueNIMs.has(data.nim)) { // Cek apakah NIM sudah ada di Set
+                uniqueNIMs.add(data.nim);    // Tambahkan NIM ke dalam Set
+                mahasiswaData.push({
+                    id: doc.id,
+                    name: data.name,
+                    nim: data.nim,
+                    email: data.email,
+                    photoURL: data.photoURL || null
+                });
+            }
         });
         setMahasiswaList(mahasiswaData);
-      }
+        console.log('User ID:', userProfile.userId);
+        console.log('Mahasiswa Data:', mahasiswaData);
     };
+    
 
-    fetchMahasiswaData();
+
+
+    
+
+      const fetchPengajuanData = async () => {
+        console.log('User ID (dosen) dari localStorage:', userProfile.userId);
+    
+        const q = query(
+          collection(db, 'pengajuan-bimbingan'),
+          where('dosen', '==', userProfile.userId) // Menggunakan userId langsung
+        );
+    
+        const querySnapshot = await getDocs(q);
+        console.log('Jumlah pengajuan:', querySnapshot.size);
+    
+        setPengajuanCount(querySnapshot.size);
+      };
+
+      const fetchJadwalData = async () => {
+        const q = query(collection(db, 'jadwal-bimbingan'), where('dosenId', '==', userProfile.userId));
+        const querySnapshot = await getDocs(q);
+        setJadwalCount(querySnapshot.size);
+      };
+
+      fetchMahasiswaData();
+      fetchPengajuanData();
+      fetchJadwalData();
+    }
   }, [userProfile]);
 
-  const handleOpenEditProfileModal = () => {
-    setIsEditProfileModalOpen(true);
-  };
-
-  const handleCloseEditProfileModal = () => {
-    setIsEditProfileModalOpen(false);
-  };
-
-  const handleOpenRiwayatModal = () => {
-    setIsRiwayatModalOpen(true);
-  };
-
-  const handleCloseRiwayatModal = () => {
-    setIsRiwayatModalOpen(false);
-  };
+  const handleOpenEditProfileModal = () => setIsEditProfileModalOpen(true);
+  const handleCloseEditProfileModal = () => setIsEditProfileModalOpen(false);
 
   if (loading) {
     return <div className="flex items-center justify-center min-h-screen text-lg font-semibold">Loading...</div>;
   }
 
   return (
-    <AuthWrapper allowedRoles={['mahasiswa']}>
-    <div className="p-4 sm:p-8 space-y-8 bg-gray-50 min-h-screen">
-      <header className="flex flex-col sm:flex-row justify-between items-center bg-white p-4 sm:p-6 rounded-lg shadow-md">
-        <h1 className="text-2xl sm:text-3xl font-bold">Dashboard Dosen</h1>
-      </header>
+    <AuthWrapper allowedRoles={['dosen']}>
+      <div className="p-4 sm:p-8 space-y-8 bg-gray-50 min-h-screen">
+        <header className="flex flex-col sm:flex-row justify-between items-center bg-white p-4 sm:p-6 rounded-lg shadow-md">
+          <h1 className="text-2xl sm:text-3xl font-bold">Dashboard Dosen</h1>
+        </header>
 
-      {/* Profil Dosen */}
-      <section className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
-        <h2 className="text-xl font-semibold mb-4">Profil Dosen</h2>
-        <div className="flex items-center space-x-4">
-          <img 
-            src={userProfile?.photoURL || '/default-profile.png'} 
-            alt="Profile Picture" 
-            className="w-16 h-16 rounded-full object-cover" 
-          />
-          <div>
-            <p className="text-lg font-medium">{userProfile?.name}</p>
-            <p className="text-sm text-gray-500">{userProfile?.nim}</p>
-            <p className="text-sm text-gray-500">{userProfile?.email}</p>
+        {/* Profil Dosen */}
+        <section className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
+          <h2 className="text-xl font-semibold mb-4">Profil Dosen</h2>
+          <div className="flex items-center space-x-4">
+            <img
+              src={userProfile?.photoURL || '/default-profile.png'}
+              alt="Profile Picture"
+              className="w-16 h-16 rounded-full object-cover"
+            />
+            <div>
+              <p className="text-lg font-medium">{userProfile?.name}</p>
+              <p className="text-sm text-gray-500">{userProfile?.nim}</p>
+              <p className="text-sm text-gray-500">{userProfile?.email}</p>
+            </div>
           </div>
-        </div>
-        <button
-          className="mt-4 sm:mt-0 px-4 py-2 bg-indigo-600 text-white rounded-lg"
-          onClick={handleOpenEditProfileModal}
-        >
-          Edit Profil
-        </button>
-      </section>
+          <button
+            className="mt-4 sm:mt-0 px-4 py-2 bg-indigo-600 text-white rounded-lg"
+            onClick={handleOpenEditProfileModal}
+          >
+            Edit Profil
+          </button>
+        </section>
 
-      <section className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {/* Daftar Mahasiswa yang Dibimbing */}
-        <div className="p-4 sm:p-6 bg-white rounded-lg shadow-md">
-          <h2 className="text-lg sm:text-xl font-semibold mb-4">Daftar Mahasiswa yang Dibimbing</h2>
-          <ul>
-            {mahasiswaList.length > 0 ? (
-              mahasiswaList.map((mahasiswa) => (
-                <li key={mahasiswa.id} className="text-base sm:text-lg text-gray-500">
-                  {mahasiswa.name} ({mahasiswa.nim})
-                </li>
-              ))
-            ) : (
-              <p className="text-base sm:text-lg text-gray-500">Belum ada mahasiswa yang dibimbing.</p>
-            )}
-          </ul>
-        </div>
+        {/* Kartu Daftar Mahasiswa, Pengajuan, dan Jadwal Bimbingan */}
+        <section className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <CardCollection
+            title="Daftar Mahasiswa yang Dibimbing"
+            count={mahasiswaList.length}
+            category="listMahasiswa"
+            route="dosen/listMahasiswa"
+          />
+          <CardCollection
+            title="Pengajuan Bimbingan"
+            count={pengajuanCount}
+            category="pengajuan"
+            route="dosen/pengajuan"
+          />
+          <CardCollection
+            title="Jadwal Bimbingan"
+            count={jadwalCount}
+            category="jadwal"
+            route="dosen/jadwal"
 
-        {/* Modal Riwayat Bimbingan */}
-        <button
-          className="px-4 py-2 bg-green-600 text-white rounded-lg"
-          onClick={handleOpenRiwayatModal}
-        >
-          Lihat Riwayat Bimbingan
-        </button>
-      </section>
+          />
+        </section>
 
-      {/* Modal Edit Profil */}
-      <ModalEditProfile 
-        isOpen={isEditProfileModalOpen} 
-        onClose={handleCloseEditProfileModal} 
-        userProfile={userProfile} 
-        setUserProfile={setUserProfile} 
-      />
-
-      {/* Modal Riwayat */}
-      <ModalRiwayat 
-        isOpen={isRiwayatModalOpen} 
-        onClose={handleCloseRiwayatModal} 
-        userId={userProfile?.userId || ''} 
-      />
-    </div>
+        {/* Modal Components */}
+        <ModalEditProfile
+          isOpen={isEditProfileModalOpen}
+          onClose={handleCloseEditProfileModal}
+          userProfile={userProfile}
+          setUserProfile={setUserProfile}
+        />
+      </div>
     </AuthWrapper>
   );
 };
