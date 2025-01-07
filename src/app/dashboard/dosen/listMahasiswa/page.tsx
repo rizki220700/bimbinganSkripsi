@@ -21,18 +21,33 @@ interface User {
 }
 
 const ListMahasiswaBimbingan = () => {
-  const [mahasiswaBimbingan, setMahasiswaBimbingan] = useState<PengajuanBimbingan[]>([]);
+  const [mahasiswaBimbingan, setMahasiswaBimbingan] = useState<PengajuanBimbingan[]>([]); // Menyimpan data pengajuan bimbingan
   const [loading, setLoading] = useState(true);
   const [mahasiswaData, setMahasiswaData] = useState<{ [key: string]: User }>({}); // Menyimpan data mahasiswa berdasarkan userId
+  const [dosenId, setDosenId] = useState<string | null>(null); // State untuk menyimpan dosenId
 
+  // Ambil dosenId dari localStorage ketika komponen dimuat
   useEffect(() => {
+    const storedDosenId = localStorage.getItem('userProfile');
+    if (storedDosenId) {
+      const userProfile = JSON.parse(storedDosenId);
+      setDosenId(userProfile.userId); // Set dosenId ketika tersedia
+    }
+  }, []);
+
+  // Ambil data pengajuan bimbingan dan filter berdasarkan dosenId
+  useEffect(() => {
+    if (!dosenId) return; // Pastikan dosenId sudah tersedia
+
     const unsubscribe = onSnapshot(
-      query(collection(db, 'pengajuan-bimbingan'), where('status', '==', 'Accepted')), 
+      query(collection(db, 'pengajuan-bimbingan'), where('status', '==', 'Accepted')), // Hanya ambil yang diterima
       (querySnapshot) => {
-        const bimbinganData = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...(doc.data() as PengajuanBimbingan)
-        }));
+        const bimbinganData = querySnapshot.docs
+          .map(doc => ({
+            id: doc.id,
+            ...(doc.data() as PengajuanBimbingan)
+          }))
+          .filter(item => item.dosen === dosenId); // Filter berdasarkan dosenId
 
         setMahasiswaBimbingan(bimbinganData);
         setLoading(false);
@@ -53,7 +68,7 @@ const ListMahasiswaBimbingan = () => {
       });
 
     return () => unsubscribe();
-  }, [mahasiswaData]);
+  }, [dosenId, mahasiswaData]); // Menggunakan dosenId sebagai dependensi
 
   if (loading) {
     return (

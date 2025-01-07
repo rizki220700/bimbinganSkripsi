@@ -27,13 +27,29 @@ const PengajuanBimbinganPage = () => {
   const [mahasiswaNames, setMahasiswaNames] = useState<{ [key: string]: string }>({}); // Menyimpan nama mahasiswa berdasarkan userId
   const [filteredPengajuan, setFilteredPengajuan] = useState<PengajuanBimbingan[]>([]); // Menyimpan pengajuan yang sudah difilter
   const [selectedMahasiswa, setSelectedMahasiswa] = useState<any>(null); // State untuk menyimpan mahasiswa yang dipilih
+  const [dosenId, setDosenId] = useState<string | null>(null); // State untuk menyimpan dosenId
 
+  // Ambil dosenId dari localStorage ketika komponen dimuat
   useEffect(() => {
+    const storedDosenId = localStorage.getItem('userProfile');
+    if (storedDosenId) {
+      const userProfile = JSON.parse(storedDosenId);
+      setDosenId(userProfile.userId); // Set dosenId when available
+    }
+  }, []);
+
+  // Ambil data pengajuan bimbingan dan filter berdasarkan dosenId
+  useEffect(() => {
+    if (!dosenId) return; // Pastikan dosenId sudah tersedia
+
     const unsubscribe = onSnapshot(collection(db, 'pengajuan-bimbingan'), (querySnapshot) => {
-      const pengajuanData = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...(doc.data() as PengajuanBimbingan)
-      }));
+      const pengajuanData = querySnapshot.docs
+        .map(doc => ({
+          id: doc.id,
+          ...(doc.data() as PengajuanBimbingan)
+        }))
+        .filter(item => item.dosen === dosenId); // Filter berdasarkan dosenId
+
       setPengajuan(pengajuanData);
       setLoading(false);
 
@@ -53,7 +69,7 @@ const PengajuanBimbinganPage = () => {
     });
 
     return () => unsubscribe();
-  }, [mahasiswaNames]);
+  }, [dosenId, mahasiswaNames]); // Menggunakan dosenId sebagai dependensi
 
   // Mengubah pengajuan yang ditampilkan berdasarkan filter nama mahasiswa
   useEffect(() => {
