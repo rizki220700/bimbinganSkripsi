@@ -22,25 +22,25 @@ interface User {
 }
 
 const PengajuanBimbinganPage = () => {
-  const [pengajuan, setPengajuan] = useState<PengajuanBimbingan[]>([]);
+  const [pengajuan, setPengajuan] = useState<PengajuanBimbingan[]>([]); // Data pengajuan
   const [loading, setLoading] = useState(true);
   const [mahasiswaNames, setMahasiswaNames] = useState<{ [key: string]: string }>({}); // Menyimpan nama mahasiswa berdasarkan userId
-  const [filteredPengajuan, setFilteredPengajuan] = useState<PengajuanBimbingan[]>([]); // Menyimpan pengajuan yang sudah difilter
-  const [selectedMahasiswa, setSelectedMahasiswa] = useState<any>(null); // State untuk menyimpan mahasiswa yang dipilih
-  const [dosenId, setDosenId] = useState<string | null>(null); // State untuk menyimpan dosenId
+  const [filteredPengajuan, setFilteredPengajuan] = useState<PengajuanBimbingan[]>([]); // Pengajuan yang difilter
+  const [selectedMahasiswa, setSelectedMahasiswa] = useState<any>(null); // Mahasiswa yang dipilih
+  const [dosenId, setDosenId] = useState<string | null>(null); // Dosen ID
 
-  // Ambil dosenId dari localStorage ketika komponen dimuat
+  // Ambil dosenId dari localStorage
   useEffect(() => {
     const storedDosenId = localStorage.getItem('userProfile');
     if (storedDosenId) {
       const userProfile = JSON.parse(storedDosenId);
-      setDosenId(userProfile.userId); // Set dosenId when available
+      setDosenId(userProfile.userId); // Set dosenId ketika tersedia
     }
   }, []);
 
   // Ambil data pengajuan bimbingan dan filter berdasarkan dosenId
   useEffect(() => {
-    if (!dosenId) return; // Pastikan dosenId sudah tersedia
+    if (!dosenId) return; // Pastikan dosenId tersedia
 
     const unsubscribe = onSnapshot(collection(db, 'pengajuan-bimbingan'), (querySnapshot) => {
       const pengajuanData = querySnapshot.docs
@@ -180,7 +180,7 @@ const PengajuanBimbinganPage = () => {
                 <td className="p-3 border border-gray-200">{item.status}</td>
                 <td className="p-3 border border-gray-200">{formatTimestamp(item.timestamp)}</td>
                 <td className="p-3 border border-gray-200 flex gap-2">
-                  {item.status === 'pending' && (
+                  {(item.status === 'Accepted' || item.status === 'Rejected') && (
                     <>
                       <FaCheck 
                         onClick={() => handleTerima(item.id!)} 
