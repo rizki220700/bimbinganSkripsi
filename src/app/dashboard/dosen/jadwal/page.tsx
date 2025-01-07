@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { db } from '@/firebase/firebaseconfig';
-import { collection, getDocs, deleteDoc, doc, updateDoc } from 'firebase/firestore';
+import { collection, deleteDoc, doc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import ModalJadwalBimbingan from '@/app/components/ModalJadwalBimbingan';
+import ModalEditJadwalBimbingan from '@/app/components/ModalEditJadwalBimbingan'; // Import ModalEditJadwalBimbingan
 import { FaTrash, FaEdit } from 'react-icons/fa';
 
 interface JadwalBimbingan {
@@ -27,6 +28,8 @@ interface JadwalBimbingan {
 
 const JadwalBimbinganPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false); // State for edit modal
+  const [selectedJadwalId, setSelectedJadwalId] = useState<string | null>(null); // State for selected jadwal ID
   const [dosenId, setDosenId] = useState('');
   const [jadwal, setJadwal] = useState<JadwalBimbingan[]>([]);
   const [loading, setLoading] = useState(false);
@@ -39,26 +42,35 @@ const JadwalBimbinganPage = () => {
       setDosenId(userProfile.userId);
     }
 
-    const fetchData = async () => {
-      const querySnapshot = await getDocs(collection(db, 'jadwal-bimbingan'));
+    const unsubscribe = onSnapshot(collection(db, 'jadwal-bimbingan'), (querySnapshot) => {
       const jadwalData = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...(doc.data() as JadwalBimbingan)
       }));
       setJadwal(jadwalData);
-    };
-    fetchData();
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const handleOpenModal = () => setIsModalOpen(true);
   const handleCloseModal = () => setIsModalOpen(false);
+
+  const handleOpenEditModal = (jadwalId: string) => {
+    setSelectedJadwalId(jadwalId); // Set the selected jadwalId
+    setIsEditModalOpen(true); // Open edit modal
+  };
+
+  const handleCloseEditModal = () => {
+    setIsEditModalOpen(false);
+    setSelectedJadwalId(null); // Clear selected jadwalId when closing the modal
+  };
 
   const handleDelete = async (id?: string) => {
     if (!id) return;
     setLoading(true);
     try {
       await deleteDoc(doc(db, 'jadwal-bimbingan', id));
-      router.refresh();
     } catch (error) {
       console.error('Error deleting:', error);
     } finally {
@@ -71,7 +83,6 @@ const JadwalBimbinganPage = () => {
     setLoading(true);
     try {
       await updateDoc(doc(db, 'jadwal-bimbingan', id), {});
-      router.refresh();
     } catch (error) {
       console.error('Error updating:', error);
     } finally {
@@ -85,7 +96,19 @@ const JadwalBimbinganPage = () => {
         Tambah Jadwal Bimbingan
       </button>
 
-      <ModalJadwalBimbingan isOpen={isModalOpen} onClose={handleCloseModal} dosenId={dosenId} />
+      {/* ModalJadwalBimbingan */}
+      <ModalJadwalBimbingan 
+        isOpen={isModalOpen} 
+        onClose={handleCloseModal} 
+        dosenId={dosenId} 
+      />
+
+      {/* ModalEditJadwalBimbingan */}
+      <ModalEditJadwalBimbingan 
+        isOpen={isEditModalOpen} 
+        onClose={handleCloseEditModal} 
+        jadwalId={selectedJadwalId || ''} 
+      />
 
       <div className="overflow-x-auto">
         <table className="table-auto w-full border-collapse border border-gray-200 shadow-md rounded-lg">
@@ -120,7 +143,7 @@ const JadwalBimbinganPage = () => {
                 <td className="p-3 border border-gray-200">{item.status}</td>
                 <td className="p-3 border border-gray-200 flex gap-2 text-lg">
                   <FaTrash onClick={() => handleDelete(item.id)} className="text-red-500 cursor-pointer hover:text-red-700 transition duration-300" />
-                  <FaEdit onClick={() => handleUpdate(item.id)} className="text-blue-500 cursor-pointer hover:text-blue-700 transition duration-300" />
+                  <FaEdit onClick={() => handleOpenEditModal(item.id || '')} className="text-blue-500 cursor-pointer hover:text-blue-700 transition duration-300" />
                 </td>
               </tr>
             ))}
@@ -128,8 +151,7 @@ const JadwalBimbinganPage = () => {
         </table>
       </div>
     </div>
-);
-
+  );
 };
 
 export default JadwalBimbinganPage;
