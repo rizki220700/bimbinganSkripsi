@@ -5,17 +5,26 @@ import { useRouter } from 'next/navigation';
 import { getAuth, signOut, onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/firebase/firebaseconfig';
 import Link from 'next/link';
-import { FaSignInAlt, FaUser, FaSignOutAlt, FaRegUser } from 'react-icons/fa';
+import { FaSignInAlt, FaUser, FaSignOutAlt, FaRegUser, FaList, FaClipboard, FaCalendarAlt, FaHome } from 'react-icons/fa';
 
 const Header = () => {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   // Memantau perubahan status login
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user); // Mengupdate status user jika login/logout
+      if (user) {
+        // Cek role dari localStorage
+        const storedUserData = localStorage.getItem('userData');
+        if (storedUserData) {
+          const parsedUserData = JSON.parse(storedUserData);
+          setUserRole(parsedUserData.role); // Mengambil role pengguna
+        }
+      }
     });
     return () => unsubscribe();
   }, []);
@@ -49,7 +58,32 @@ const Header = () => {
                 </>
               ) : (
                 <>
-           
+                  {/* Menu khusus dosen */}
+                  {userRole === 'dosen' && (
+                    <>
+                     <li>
+                        <Link href="/dashboard/dosen" className="flex items-center space-x-2 hover:text-gray-300">
+                          <FaHome /> <span>Dashboard</span>
+                        </Link>
+                      </li>
+                      <li>
+                        <Link href="/dashboard/dosen/listMahasiswa" className="flex items-center space-x-2 hover:text-gray-300">
+                          <FaList /> <span>List Mahasiswa</span>
+                        </Link>
+                      </li>
+                      <li>
+                        <Link href="/dashboard/dosen/pengajuan" className="flex items-center space-x-2 hover:text-gray-300">
+                          <FaClipboard /> <span>Pengajuan Bimbingan</span>
+                        </Link>
+                      </li>
+                      <li>
+                        <Link href="/dashboard/dosen/jadwal" className="flex items-center space-x-2 hover:text-gray-300">
+                          <FaCalendarAlt /> <span>Jadwal Bimbingan</span>
+                        </Link>
+                      </li>
+                    </>
+                  )}
+
                   <li>
                     <button onClick={handleLogout} className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
                       <FaSignOutAlt /> Logout
@@ -79,7 +113,32 @@ const Header = () => {
                 </>
               ) : (
                 <>
-                 
+                  {/* Menu khusus dosen untuk mobile */}
+                  {userRole === 'dosen' && (
+                    <>
+                      <li>
+                        <Link href="/dashboard/dosen" className="flex items-center space-x-2 hover:text-gray-300">
+                          <FaHome /> <span>Dashboard</span>
+                        </Link>
+                      </li>
+                      <li>
+                        <Link href="/dashboard/dosen/listMahasiswa" className="flex items-center space-x-2 hover:text-gray-300">
+                          <FaList /> <span>List Mahasiswa</span>
+                        </Link>
+                      </li>
+                      <li>
+                        <Link href="/dashboard/dosen/pengajuan" className="flex items-center space-x-2 hover:text-gray-300">
+                          <FaClipboard /> <span>Pengajuan Bimbingan</span>
+                        </Link>
+                      </li>
+                      <li>
+                        <Link href="/dashboard/dosen/jadwal" className="flex items-center space-x-2 hover:text-gray-300">
+                          <FaCalendarAlt /> <span>Jadwal Bimbingan</span>
+                        </Link>
+                      </li>
+                    </>
+                  )}
+
                   <li>
                     <button onClick={handleLogout} className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
                       <FaSignOutAlt /> Logout

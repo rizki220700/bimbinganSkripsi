@@ -19,16 +19,36 @@ const ModalJadwalBimbingan = ({ isOpen, onClose, dosenId }: ModalJadwalBimbingan
   const [selectedJenis, setSelectedJenis] = useState<string>('online');
   const [isSaving, setIsSaving] = useState<boolean>(false);
 
+  // Progress bab1, bab2, bab3, bab4, bab5
+  const [progress, setProgress] = useState<Record<'bab1' | 'bab2' | 'bab3' | 'bab4' | 'bab5', boolean>>({
+    bab1: false,
+    bab2: false,
+    bab3: false,
+    bab4: false,
+    bab5: false,
+  });
+  
+  // Pesan/Keterangan
+  const [keterangan, setKeterangan] = useState<string>('');
+
   // Ambil daftar mahasiswa yang sudah mengajukan bimbingan ke dosen
   useEffect(() => {
     const fetchMahasiswa = async () => {
-        const q = query(collection(db, 'pengajuan-bimbingan'), where('dosen', '==', dosenId));
-
+      const q = query(collection(db, 'pengajuan-bimbingan'), where('dosen', '==', dosenId));
+  
       const querySnapshot = await getDocs(q);
   
+      if (querySnapshot.empty) {
+        console.log("Tidak ada pengajuan bimbingan yang ditemukan untuk dosenId:", dosenId);
+      } else {
+        console.log("Pengajuan bimbingan ditemukan:", querySnapshot.docs);
+      }
+  
+      // Gunakan Set untuk menghindari mahasiswa yang sama muncul lebih dari sekali
       const mahasiswaData = await Promise.all(
         querySnapshot.docs.map(async (docSnapshot) => {
           const mahasiswaId = docSnapshot.data().userId;
+  
           const mahasiswaDoc = await getDoc(doc(db, 'users', mahasiswaId));
           if (mahasiswaDoc.exists()) {
             return {
@@ -40,9 +60,16 @@ const ModalJadwalBimbingan = ({ isOpen, onClose, dosenId }: ModalJadwalBimbingan
         })
       );
   
-      const filteredData = mahasiswaData.filter(item => item !== null);
-      console.log("Mahasiswa Data: ", filteredData); // Menampilkan data mahasiswa untuk debugging
-      setMahasiswaList(filteredData);
+      // Hapus data null dan filter duplikat berdasarkan mahasiswaId
+      const uniqueMahasiswaData = Array.from(
+        new Map(
+          mahasiswaData
+            .filter(item => item !== null)
+            .map(item => [item.value, item]) // Key adalah mahasiswaId (value) untuk menghindari duplikasi
+        ).values()
+      );
+  
+      setMahasiswaList(uniqueMahasiswaData);
     };
   
     if (isOpen) {
@@ -51,15 +78,25 @@ const ModalJadwalBimbingan = ({ isOpen, onClose, dosenId }: ModalJadwalBimbingan
   }, [isOpen, dosenId]);
   
 
+  // Handle perubahan pada checkbox progress bab1 - bab5
+  const handleProgressChange = (bab: 'bab1' | 'bab2' | 'bab3' | 'bab4' | 'bab5') => {
+    setProgress(prev => ({
+      ...prev,
+      [bab]: !prev[bab] // Toggle nilai progress untuk bab yang dipilih
+    }));
+  };
+  
+
   // Simpan jadwal bimbingan
+
   const handleSaveJadwal = async () => {
     if (!selectedMahasiswa || !selectedTime || !selectedLocation) {
       alert('Mohon lengkapi semua data!');
       return;
     }
-
+  
     setIsSaving(true);
-
+  
     try {
       await addDoc(collection(db, 'jadwal-bimbingan'), {
         dosenId: dosenId,
@@ -69,10 +106,27 @@ const ModalJadwalBimbingan = ({ isOpen, onClose, dosenId }: ModalJadwalBimbingan
         jenis: selectedJenis,
         status: 'scheduled',
         timestamp: new Date(),
+        progress: progress,  // Menambahkan progress bab1-bab5
+        keterangan: keterangan,  // Menambahkan keterangan
       });
-
+  
       alert('Jadwal Bimbingan berhasil dibuat!');
-      onClose();
+      
+      // Reset semua state form setelah jadwal berhasil disimpan
+      setSelectedMahasiswa('');
+      setSelectedTime('');
+      setSelectedLocation('');
+      setSelectedJenis('online');
+      setProgress({
+        bab1: false,
+        bab2: false,
+        bab3: false,
+        bab4: false,
+        bab5: false,
+      });
+      setKeterangan('');
+  
+      onClose(); // Menutup modal setelah reset form
     } catch (error) {
       console.error('Error saving jadwal:', error);
       alert('Terjadi kesalahan saat menyimpan jadwal.');
@@ -80,6 +134,7 @@ const ModalJadwalBimbingan = ({ isOpen, onClose, dosenId }: ModalJadwalBimbingan
       setIsSaving(false);
     }
   };
+  
 
   if (!isOpen) return null;
 
@@ -92,12 +147,11 @@ const ModalJadwalBimbingan = ({ isOpen, onClose, dosenId }: ModalJadwalBimbingan
         <div className="mt-4">
           <label className="block text-sm font-medium">Pilih Mahasiswa</label>
           <Select
-  options={mahasiswaList}
-  onChange={(selectedOption) => setSelectedMahasiswa(selectedOption?.value || '')}
-  placeholder="Pilih Mahasiswa"
-  isClearable // Menambahkan opsi untuk menghapus pilihan
-/>
-
+            options={mahasiswaList}
+            onChange={(selectedOption) => setSelectedMahasiswa(selectedOption?.value || '')}
+            placeholder="Pilih Mahasiswa"
+            isClearable
+          />
         </div>
 
         {/* Waktu Bimbingan */}
@@ -132,6 +186,38 @@ const ModalJadwalBimbingan = ({ isOpen, onClose, dosenId }: ModalJadwalBimbingan
             ]}
             onChange={(selectedOption) => setSelectedJenis(selectedOption?.value || 'online')}
             value={{ value: selectedJenis, label: selectedJenis === 'online' ? 'Online' : 'Offline' }}
+          />
+        </div>
+
+        {/* Checklist Bab */}
+        <div className="mt-4">
+          <label className="block text-sm font-medium">Progress Bab</label>
+          <div className="flex flex-wrap space-x-4 mt-2">
+            {(['bab1', 'bab2', 'bab3', 'bab4', 'bab5'] as const).map((bab) => (
+              <div key={bab} className="flex items-center mb-2">
+                <input
+                  type="checkbox"
+                  checked={progress[bab]}
+                  onChange={() => handleProgressChange(bab)}
+                  className="mr-2"
+                />
+                <label>{bab.toUpperCase()}</label>
+              </div>
+            ))}
+          </div>
+        </div>
+
+
+
+
+        {/* Keterangan */}
+        <div className="mt-4">
+          <label className="block text-sm font-medium">Pesan/Keterangan</label>
+          <textarea
+            value={keterangan}
+            onChange={(e) => setKeterangan(e.target.value)}
+            className="mt-2 w-full p-2 border border-gray-300 rounded-md"
+            placeholder="Masukkan pesan atau keterangan"
           />
         </div>
 
