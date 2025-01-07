@@ -42,17 +42,24 @@ const JadwalBimbinganPage = () => {
       const userProfile = JSON.parse(storedDosenId);
       setDosenId(userProfile.userId);
     }
-
+  }, []); // This effect runs only once to get the dosenId from localStorage
+  
+  useEffect(() => {
+    if (!dosenId) return; // Only run when dosenId is available
+  
     const unsubscribe = onSnapshot(collection(db, 'jadwal-bimbingan'), (querySnapshot) => {
-      const jadwalData = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...(doc.data() as JadwalBimbingan)
-      }));
+      const jadwalData = querySnapshot.docs
+        .map(doc => ({
+          id: doc.id,
+          ...(doc.data() as JadwalBimbingan)
+        }))
+        .filter(item => item.dosenId === dosenId); // Filter jadwal based on dosenId
+  
       setJadwal(jadwalData);
-
+  
       // Ambil nama mahasiswa berdasarkan mahasiswaId
       jadwalData.forEach(async (item) => {
-        if (!mahasiswaNames[item.mahasiswaId]) { // Ambil data mahasiswa hanya jika belum ada
+        if (!mahasiswaNames[item.mahasiswaId]) { // Fetch mahasiswa name if not already fetched
           const mahasiswaDoc = await getDoc(doc(db, 'users', item.mahasiswaId));
           if (mahasiswaDoc.exists()) {
             setMahasiswaNames(prevState => ({
@@ -63,9 +70,10 @@ const JadwalBimbinganPage = () => {
         }
       });
     });
-
+  
     return () => unsubscribe();
-  }, []); // Hanya dijalankan sekali saat pertama kali mount
+  }, [dosenId]); // Only runs when dosenId is available
+  
 
   const handleOpenModal = () => setIsModalOpen(true);
   const handleCloseModal = () => setIsModalOpen(false);
