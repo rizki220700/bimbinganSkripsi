@@ -112,29 +112,30 @@ const DashboardMahasiswa: React.FC = () => {
       fetchDosen();
 
       const fetchJadwalBimbingan = async () => {
-        if (!userProfile?.userId) {
-          return;
-        }
+        if (!userProfile?.userId) return;
+    
         setLoadingJadwal(true);
         try {
-          const q = query(
-            collection(db, 'jadwal-bimbingan'),
-            where('userId', '==', userProfile.userId)
-          );
-          const querySnapshot = await getDocs(q);
-          
-          const jadwalData = querySnapshot.docs.map(doc => doc.data());
-          setJadwalBimbingan(jadwalData);
+            const q = query(
+                collection(db, 'jadwal-bimbingan'),
+                where('mahasiswaId', '==', userProfile.userId)  // Menggunakan mahasiswaId
+            );
+            const querySnapshot = await getDocs(q);
+            
+            const jadwalData = querySnapshot.docs.map(doc => doc.data());
+            setJadwalBimbingan(jadwalData);
         } catch (error) {
-          console.error('Error fetching jadwal bimbingan:', error);
+            console.error('Error fetching jadwal bimbingan:', error);
         } finally {
-          setLoadingJadwal(false);
+            setLoadingJadwal(false);
         }
-      };
+    };
     
-      if (userProfile?.userId) {
+    // Memastikan dipanggil saat userProfile siap
+    if (userProfile?.userId) {
         fetchJadwalBimbingan();
-      }
+    }
+    
     }, [userProfile?.userId]); // Jalankan jika userProfile berubah
     
 
@@ -230,33 +231,49 @@ const DashboardMahasiswa: React.FC = () => {
 
       <section className="bg-white p-6 rounded-lg shadow-md">
   <h2 className="text-xl font-semibold mb-4">Jadwal Bimbingan</h2>
-  {loadingJadwal ? (
+  
+  {loading ? (
     <div>Loading jadwal...</div>
   ) : jadwalBimbingan.length === 0 ? (
     <p>Tidak ada jadwal bimbingan.</p>
   ) : (
-    <table className="w-full table-auto border-collapse">
+    <table className="w-full table-auto border-collapse border border-gray-300">
       <thead>
         <tr className="bg-gray-100">
-          <th className="px-4 py-2 text-left">Tanggal</th>
-          <th className="px-4 py-2 text-left">Waktu</th>
-          <th className="px-4 py-2 text-left">Tempat</th>
-          <th className="px-4 py-2 text-left">Jenis Bimbingan</th>
+          <th className="px-4 py-2 border">No</th>
+          <th className="px-4 py-2 border">Jenis Bimbingan</th>
+          <th className="px-4 py-2 border">Tanggal</th>
+          <th className="px-4 py-2 border">Tempat</th>
+          <th className="px-4 py-2 border">Progress</th>
+          <th className="px-4 py-2 border">Keterangan</th>
+          <th className="px-4 py-2 border">Status</th>
         </tr>
       </thead>
       <tbody>
-        {jadwalBimbingan.map((jadwal, index) => (
-          <tr key={index} className="border-b">
-            <td className="px-4 py-2">{new Date(jadwal.tanggal).toLocaleDateString()}</td>
-            <td className="px-4 py-2">{jadwal.waktu}</td>
-            <td className="px-4 py-2">{jadwal.tempat}</td>
-            <td className="px-4 py-2">{jadwal.jenisBimbingan}</td>
-          </tr>
-        ))}
-      </tbody>
+  {jadwalBimbingan.map((item, index) => (
+    <tr key={item.id || index} className="border-b">
+      <td className="px-4 py-2 border">{index + 1}</td>
+      <td className="px-4 py-2 border">{item.jenis}</td>
+      <td className="px-4 py-2 border">
+        {item.timestamp ? new Date(item.timestamp.seconds * 1000).toLocaleDateString('id-ID') : 'Tanggal tidak tersedia'}
+      </td>
+      <td className="px-4 py-2 border">{item.location}</td>
+      <td className="px-4 py-2 border">
+        {Object.entries(item.progress)
+          .filter(([_, status]) => status)
+          .map(([bab]) => bab)
+          .join(', ')}
+      </td>
+      <td className="px-4 py-2 border">{item.keterangan}</td>
+      <td className="px-4 py-2 border">{item.status}</td>
+    </tr>
+  ))}
+</tbody>
+
     </table>
   )}
 </section>
+
 
       {/* Tombol untuk membuka Modal Riwayat */}
      
