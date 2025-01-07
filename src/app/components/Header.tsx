@@ -13,16 +13,14 @@ const Header = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
 
-  // Memantau perubahan status login
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user); // Mengupdate status user jika login/logout
+      setUser(user);
       if (user) {
-        // Cek role dari localStorage
         const storedUserData = localStorage.getItem('userData');
         if (storedUserData) {
           const parsedUserData = JSON.parse(storedUserData);
-          setUserRole(parsedUserData.role); // Mengambil role pengguna
+          setUserRole(parsedUserData.role);
         }
       }
     });
@@ -58,29 +56,12 @@ const Header = () => {
                 </>
               ) : (
                 <>
-                  {/* Menu khusus dosen */}
                   {userRole === 'dosen' && (
                     <>
-                     <li>
-                        <Link href="/dashboard/dosen" className="flex items-center space-x-2 hover:text-gray-300">
-                          <FaHome /> <span>Dashboard</span>
-                        </Link>
-                      </li>
-                      <li>
-                        <Link href="/dashboard/dosen/listMahasiswa" className="flex items-center space-x-2 hover:text-gray-300">
-                          <FaList /> <span>List Mahasiswa</span>
-                        </Link>
-                      </li>
-                      <li>
-                        <Link href="/dashboard/dosen/pengajuan" className="flex items-center space-x-2 hover:text-gray-300">
-                          <FaClipboard /> <span>Pengajuan Bimbingan</span>
-                        </Link>
-                      </li>
-                      <li>
-                        <Link href="/dashboard/dosen/jadwal" className="flex items-center space-x-2 hover:text-gray-300">
-                          <FaCalendarAlt /> <span>Jadwal Bimbingan</span>
-                        </Link>
-                      </li>
+                      <li><Link href="/dashboard/dosen" className="flex items-center space-x-2 hover:text-gray-300"><FaHome /> <span>Dashboard</span></Link></li>
+                      <li><Link href="/dashboard/dosen/listMahasiswa" className="flex items-center space-x-2 hover:text-gray-300"><FaList /> <span>List Mahasiswa</span></Link></li>
+                      <li><Link href="/dashboard/dosen/pengajuan" className="flex items-center space-x-2 hover:text-gray-300"><FaClipboard /> <span>Pengajuan Bimbingan</span></Link></li>
+                      <li><Link href="/dashboard/dosen/jadwal" className="flex items-center space-x-2 hover:text-gray-300"><FaCalendarAlt /> <span>Jadwal Bimbingan</span></Link></li>
                     </>
                   )}
 
@@ -95,13 +76,11 @@ const Header = () => {
           </nav>
         </div>
 
-        {/* Mobile menu button */}
         <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="md:hidden text-white">
           <FaUser className="text-2xl" />
         </button>
       </div>
 
-      {/* Mobile menu */}
       {isMobileMenuOpen && (
         <div className="md:hidden bg-blue-700 text-white mt-4 p-4 rounded">
           <nav>
@@ -113,29 +92,12 @@ const Header = () => {
                 </>
               ) : (
                 <>
-                  {/* Menu khusus dosen untuk mobile */}
                   {userRole === 'dosen' && (
                     <>
-                      <li>
-                        <Link href="/dashboard/dosen" className="flex items-center space-x-2 hover:text-gray-300">
-                          <FaHome /> <span>Dashboard</span>
-                        </Link>
-                      </li>
-                      <li>
-                        <Link href="/dashboard/dosen/listMahasiswa" className="flex items-center space-x-2 hover:text-gray-300">
-                          <FaList /> <span>List Mahasiswa</span>
-                        </Link>
-                      </li>
-                      <li>
-                        <Link href="/dashboard/dosen/pengajuan" className="flex items-center space-x-2 hover:text-gray-300">
-                          <FaClipboard /> <span>Pengajuan Bimbingan</span>
-                        </Link>
-                      </li>
-                      <li>
-                        <Link href="/dashboard/dosen/jadwal" className="flex items-center space-x-2 hover:text-gray-300">
-                          <FaCalendarAlt /> <span>Jadwal Bimbingan</span>
-                        </Link>
-                      </li>
+                      <li><Link href="/dashboard/dosen" className="flex items-center space-x-2 hover:text-gray-300"><FaHome /> <span>Dashboard</span></Link></li>
+                      <li><Link href="/dashboard/dosen/listMahasiswa" className="flex items-center space-x-2 hover:text-gray-300"><FaList /> <span>List Mahasiswa</span></Link></li>
+                      <li><Link href="/dashboard/dosen/pengajuan" className="flex items-center space-x-2 hover:text-gray-300"><FaClipboard /> <span>Pengajuan Bimbingan</span></Link></li>
+                      <li><Link href="/dashboard/dosen/jadwal" className="flex items-center space-x-2 hover:text-gray-300"><FaCalendarAlt /> <span>Jadwal Bimbingan</span></Link></li>
                     </>
                   )}
 
