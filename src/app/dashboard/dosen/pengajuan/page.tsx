@@ -181,16 +181,21 @@ const PengajuanBimbinganPage = () => {
                 <td className="p-3 border border-gray-200">{formatTimestamp(item.timestamp)}</td>
                 <td className="p-3 border border-gray-200 flex gap-2">
                   {(item.status === 'Accepted' || item.status === 'Rejected') && (
-                    <>
-                      <FaCheck 
-                        onClick={() => handleTerima(item.id!)} 
-                        className="text-green-500 cursor-pointer hover:text-green-700 transition duration-300" 
-                      />
-                      <FaTimes 
-                        onClick={() => handleTolak(item.id!)} 
-                        className="text-red-500 cursor-pointer hover:text-red-700 transition duration-300" 
-                      />
-                    </>
+                  <>
+                  <button 
+                    onClick={() => handleTerima(item.id!)} 
+                    className="bg-yellow-500 text-white font-bold py-2 px-4 rounded hover:bg-yellow-700 transition duration-300"
+                  >
+                    Terima
+                  </button>
+                  <button 
+                    onClick={() => handleTolak(item.id!)} 
+                    className="bg-red-500 text-white font-bold py-2 px-4 rounded hover:bg-red-700 transition duration-300 ml-2"
+                  >
+                    Tolak
+                  </button>
+                </>
+                
                   )}
                 </td>
               </tr>
