@@ -180,7 +180,7 @@ const PengajuanBimbinganPage = () => {
                 <td className="p-3 border border-gray-200">{item.status}</td>
                 <td className="p-3 border border-gray-200">{formatTimestamp(item.timestamp)}</td>
                 <td className="p-3 border border-gray-200 flex gap-2">
-                  {(item.status === 'Accepted' || item.status === 'Rejected') && (
+                 
                   <>
                   <button 
                     onClick={() => handleTerima(item.id!)} 
@@ -195,8 +195,6 @@ const PengajuanBimbinganPage = () => {
                     Tolak
                   </button>
                 </>
-                
-                  )}
                 </td>
               </tr>
             ))}
