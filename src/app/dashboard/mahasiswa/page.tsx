@@ -10,10 +10,6 @@ import ModalRiwayat from '@/app/components/ModalRiwayat';
 import ModalEditProfile from '@/app/components/ModalEditProfile';  // Import komponen modal edit profil
 import AuthWrapper from '@/app/components/AuthWrapper';
 
-interface Mentorship {
-  dosen: string;
-  status: 'belum mengajukan' | 'pending' | 'diterima';
-}
 
 interface UserProfile {
   name: string;
@@ -35,6 +31,25 @@ const DashboardMahasiswa: React.FC = () => {
   const [jadwalBimbingan, setJadwalBimbingan] = useState<any[]>([]);
   const [loadingJadwal, setLoadingJadwal] = useState<boolean>(true);
 
+  const [pengajuanCount, setPengajuanCount] = useState<number>(0); // State untuk menyimpan jumlah pengajuan
+
+const fetchPengajuanCount = async () => {
+  if (userProfile?.userId) {
+    try {
+      const q = query(collection(db, 'pengajuan-bimbingan'), where('userId', '==', userProfile.userId));
+      const querySnapshot = await getDocs(q);
+      setPengajuanCount(querySnapshot.size); // Mengatur jumlah pengajuan berdasarkan jumlah dokumen yang ditemukan
+    } catch (error) {
+      console.error('Error fetching pengajuan count:', error);
+    }
+  }
+};
+
+useEffect(() => {
+  if (userProfile?.userId) {
+    fetchPengajuanCount();
+  }
+}, [userProfile?.userId]);
 
 
   useEffect(() => {
@@ -199,32 +214,32 @@ const DashboardMahasiswa: React.FC = () => {
       </section>
 
       <section className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-      <div className="p-4 sm:p-6 bg-white rounded-lg shadow-md">
-        <h2 className="text-lg sm:text-xl font-semibold mb-4 text-center">DOSEN PEMBIMBING</h2>
-        <p className="text-base sm:text-lg text-center">{dosenName || 'Belum ada dosen pembimbing'}</p>
-      </div>
+        <div className="p-4 sm:p-6 bg-white rounded-lg shadow-md">
+          <h2 className="text-lg sm:text-xl font-semibold mb-4 text-center">DOSEN PEMBIMBING</h2>
+          <p className="text-base sm:text-lg text-center">{dosenName || 'Belum ada dosen pembimbing'}</p>
+        </div>
 
 
 
         <div className="p-4 sm:p-6 bg-white rounded-lg shadow-md">
-          <h2 className="text-lg sm:text-xl font-semibold mb-4 text-center">PENGAJUAN BIMBINGAN</h2>
-          <p className="text-base sm:text-lg">
-          </p>
-            <button
-              className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg w-full"
-              onClick={handleOpenModal}
-            >
-              Ajukan Bimbingan
-            </button>
-           <button
-        className="px-4 py-2 mt-4 bg-green-600 text-white rounded-lg w-full"
-        onClick={handleOpenRiwayatModal}
-      >
-        Lihat Riwayat Bimbingan
-      </button>
+  <h2 className="text-lg sm:text-xl font-semibold mb-4 text-center">PENGAJUAN BIMBINGAN</h2>
+  <p className="text-base sm:text-lg text-center">
+    Jumlah Pengajuan: {pengajuanCount}
+  </p>
+  <button
+    className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg w-full"
+    onClick={handleOpenModal}
+  >
+    Ajukan Bimbingan
+  </button>
+  <button
+    className="px-4 py-2 mt-4 bg-green-600 text-white rounded-lg w-full"
+    onClick={handleOpenRiwayatModal}
+  >
+    Lihat Riwayat Bimbingan
+  </button>
+</div>
 
-        
-        </div>
 
         <ProgressSkripsi userId={userProfile?.userId || ''} />
       </section>
