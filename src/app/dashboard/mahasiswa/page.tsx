@@ -270,8 +270,18 @@ useEffect(() => {
       <td className="px-4 py-2 border">{index + 1}</td>
       <td className="px-4 py-2 border">{item.jenis}</td>
       <td className="px-4 py-2 border">
-        {item.timestamp ? new Date(item.timestamp.seconds * 1000).toLocaleDateString('id-ID') : 'Tanggal tidak tersedia'}
-      </td>
+  {item.timestamp 
+    ? new Date(item.timestamp.seconds * 1000).toLocaleString('id-ID', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric', 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      }) 
+    : 'Tanggal tidak tersedia'}
+</td>
+
       <td className="px-4 py-2 border">{item.location}</td>
       <td className="px-4 py-2 border">
         {Object.entries(item.progress)
