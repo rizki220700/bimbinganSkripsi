@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/firebase/firebaseconfig';
 import { getAuth, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
@@ -35,6 +35,15 @@ const ModalEditProfile: React.FC<ModalEditProfileProps> = ({
   const [newPassword, setNewPassword] = useState<string>('');
   const [confirmNewPassword, setConfirmNewPassword] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
+  const [role, setRole] = useState<string>('');
+
+  useEffect(() => {
+    const userData = localStorage.getItem('userData');
+    if (userData) {
+      const parsedData = JSON.parse(userData);
+      setRole(parsedData.role || '');
+    }
+  }, []);
 
   const handleUploadPhoto = async (): Promise<string | null> => {
     if (!photoFile || !userProfile) return userProfile?.photoURL || null;
@@ -53,12 +62,12 @@ const ModalEditProfile: React.FC<ModalEditProfileProps> = ({
     const userRef = doc(db, 'users', userProfile.userId);
     await updateDoc(userRef, {
       name,
-      email, 
-      nim,
+      email,
+      nim: role === 'mahasiswa' ? nim : '', // Hanya simpan NIM jika role adalah mahasiswa
       photoURL,
     });
 
-    const updatedProfile = { ...userProfile, name, email, nim, photoURL };
+    const updatedProfile = { ...userProfile, name, email, nim: role === 'mahasiswa' ? nim : '', photoURL };
     setUserProfile(updatedProfile);
     localStorage.setItem('userProfile', JSON.stringify(updatedProfile));
 
@@ -123,15 +132,17 @@ const ModalEditProfile: React.FC<ModalEditProfileProps> = ({
                 className="w-full mt-1 p-2 border border-gray-300 rounded-md"
               />
             </div>
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700">nim</label>
-              <input
-                type="text"
-                value={nim}
-                onChange={(e) => setNim(e.target.value)}
-                className="w-full mt-1 p-2 border border-gray-300 rounded-md"
-              />
-            </div>
+            {role === 'mahasiswa' && (
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700">NIM</label>
+                <input
+                  type="text"
+                  value={nim}
+                  onChange={(e) => setNim(e.target.value)}
+                  className="w-full mt-1 p-2 border border-gray-300 rounded-md"
+                />
+              </div>
+            )}
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700">Foto Profil</label>
               <input
@@ -150,7 +161,6 @@ const ModalEditProfile: React.FC<ModalEditProfileProps> = ({
                 className="w-full mt-1 p-2 border border-gray-300 rounded-md"
               />
             </div>
-
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700">Password Baru</label>
               <input
@@ -160,7 +170,6 @@ const ModalEditProfile: React.FC<ModalEditProfileProps> = ({
                 className="w-full mt-1 p-2 border border-gray-300 rounded-md"
               />
             </div>
-
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700">Konfirmasi Password Baru</label>
               <input
@@ -177,7 +186,6 @@ const ModalEditProfile: React.FC<ModalEditProfileProps> = ({
             >
               Ganti Password
             </button>
-
             <button
               className="px-4 py-2 bg-indigo-600 text-white rounded-lg w-full mt-4"
               onClick={handleSaveChanges}

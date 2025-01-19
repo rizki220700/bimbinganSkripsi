@@ -32,6 +32,7 @@ const DosenDashboard: React.FC = () => {
   const [jadwalCount, setJadwalCount] = useState<number>(0);
   const [isEditProfileModalOpen, setIsEditProfileModalOpen] = useState<boolean>(false);
 
+  // Fetch user profile on component mount
   useEffect(() => {
     const storedUserProfile = localStorage.getItem('userProfile');
     if (storedUserProfile) {
@@ -57,65 +58,101 @@ const DosenDashboard: React.FC = () => {
             localStorage.setItem('userProfile', JSON.stringify(userProfileData));
           }
         }
+        setLoading(false);
       };
       fetchUserData();
     }
   }, []);
 
+  // Fetch related data after userProfile is loaded
   useEffect(() => {
     if (userProfile?.userId) {
       const fetchMahasiswaData = async () => {
-        const q = query(
-            collection(db, 'pengajuan-bimbingan'), 
+        try {
+          // Query untuk status 'Pending'
+          const qPending = query(
+            collection(db, 'pengajuan-bimbingan'),
             where('dosen', '==', userProfile.userId),
-            where('status', '==', 'accepted') 
-        );
-    
-        const querySnapshot = await getDocs(q);
-        const mahasiswaData: Mahasiswa[] = [];
-        const uniqueNIMs = new Set<string>(); // Menggunakan Set untuk mencegah duplikasi
-    
-        querySnapshot.forEach(doc => {
+            where('status', '==', 'Pending')
+          );
+      
+          // Query untuk status 'Accepted'
+          const qAccepted = query(
+            collection(db, 'pengajuan-bimbingan'),
+            where('dosen', '==', userProfile.userId),
+            where('status', '==', 'Accepted')
+          );
+      
+          // Ambil data dari kedua query
+          const querySnapshotPending = await getDocs(qPending);
+          const querySnapshotAccepted = await getDocs(qAccepted);
+      
+          const mahasiswaData: Mahasiswa[] = [];
+          const uniqueUserIds = new Set<string>();
+      
+          // Proses data dari query 'Pending'
+          querySnapshotPending.forEach(doc => {
             const data = doc.data();
-            if (!uniqueNIMs.has(data.nim)) { // Cek apakah NIM sudah ada di Set
-                uniqueNIMs.add(data.nim);    // Tambahkan NIM ke dalam Set
-                mahasiswaData.push({
-                    id: doc.id,
-                    name: data.name,
-                    nim: data.nim,
-                    email: data.email,
-                    photoURL: data.photoURL || null
-                });
+            if (!uniqueUserIds.has(data.userId)) {
+              uniqueUserIds.add(data.userId);
+              mahasiswaData.push({
+                id: data.userId,
+                name: data.name || 'Nama tidak tersedia',
+                nim: data.nim || 'NIM tidak tersedia',
+                email: data.email || 'Email tidak tersedia',
+                photoURL: data.photoURL || null,
+              });
             }
-        });
-        setMahasiswaList(mahasiswaData);
-        console.log('User ID:', userProfile.userId);
-        console.log('Mahasiswa Data:', mahasiswaData);
-    };
-    
-
-
-
-    
+          });
+      
+          // Proses data dari query 'Accepted'
+          querySnapshotAccepted.forEach(doc => {
+            const data = doc.data();
+            if (!uniqueUserIds.has(data.userId)) {
+              uniqueUserIds.add(data.userId);
+              mahasiswaData.push({
+                id: data.userId,
+                name: data.name || 'Nama tidak tersedia',
+                nim: data.nim || 'NIM tidak tersedia',
+                email: data.email || 'Email tidak tersedia',
+                photoURL: data.photoURL || null,
+              });
+            }
+          });
+      
+          setMahasiswaList(mahasiswaData);
+        } catch (error) {
+          console.error('Error fetching mahasiswa data:', error);
+        }
+      };
+      
 
       const fetchPengajuanData = async () => {
-        console.log('User ID (dosen) dari localStorage:', userProfile.userId);
-    
-        const q = query(
-          collection(db, 'pengajuan-bimbingan'),
-          where('dosen', '==', userProfile.userId) // Menggunakan userId langsung
-        );
-    
-        const querySnapshot = await getDocs(q);
-        console.log('Jumlah pengajuan:', querySnapshot.size);
-    
-        setPengajuanCount(querySnapshot.size);
+        try {
+          const q = query(
+            collection(db, 'pengajuan-bimbingan'),
+            where('dosen', '==', userProfile.userId)
+          );
+
+          const querySnapshot = await getDocs(q);
+          setPengajuanCount(querySnapshot.size);
+        } catch (error) {
+          console.error('Error fetching pengajuan data:', error);
+        }
       };
 
       const fetchJadwalData = async () => {
-        const q = query(collection(db, 'jadwal-bimbingan'), where('dosenId', '==', userProfile.userId));
-        const querySnapshot = await getDocs(q);
-        setJadwalCount(querySnapshot.size);
+        try {
+          const q = query(
+            collection(db, 'jadwal-bimbingan'),
+            where('dosenId', '==', userProfile.userId)
+          );
+
+          const querySnapshot = await getDocs(q);
+          setJadwalCount(querySnapshot.size);
+        } catch (error) {
+          console.error('Error fetching jadwal data:', error);
+        }
       };
 
       fetchMahasiswaData();
@@ -124,6 +161,7 @@ const DosenDashboard: React.FC = () => {
     }
   }, [userProfile]);
 
+  // Handlers for modal
   const handleOpenEditProfileModal = () => setIsEditProfileModalOpen(true);
   const handleCloseEditProfileModal = () => setIsEditProfileModalOpen(false);
 
@@ -134,6 +172,7 @@ const DosenDashboard: React.FC = () => {
   return (
     <AuthWrapper allowedRoles={['dosen']}>
       <div className="p-4 sm:p-8 space-y-8 bg-gray-50 min-h-screen">
+        {/* Header */}
         <header className="flex flex-col sm:flex-row justify-between items-center bg-white p-4 sm:p-6 rounded-lg shadow-md">
           <h1 className="text-2xl sm:text-3xl font-bold">Dashboard Dosen</h1>
         </header>
@@ -180,7 +219,6 @@ const DosenDashboard: React.FC = () => {
             count={jadwalCount}
             category="jadwal"
             route="dosen/jadwal"
-
           />
         </section>
 
