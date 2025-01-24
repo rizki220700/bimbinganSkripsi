@@ -35,7 +35,50 @@ const ModalPengajuan = ({ isOpen, onClose }: ModalPengajuanProps) => {
     }
   };
 
-  const handleUploadToFirebase = async () => {
+  // upload firebase 
+  // const handleUploadToFirebase = async () => {
+  //   if (!file || !selectedDosen) {
+  //     alert('Mohon lengkapi data terlebih dahulu!');
+  //     return;
+  //   }
+  //   setIsUploading(true);
+  
+  //   try {
+  //     const storageRef = ref(storage, `bimbingan/${selectedDosen}/${file.name}`);
+  //     await uploadBytes(storageRef, file);
+  //     const fileURL = await getDownloadURL(storageRef);
+  
+  //     // Mengambil userId mahasiswa dari localStorage
+  //     const storedProfile = localStorage.getItem('userProfile');
+  //     const userProfile = storedProfile ? JSON.parse(storedProfile) : null;
+  //     const userId = userProfile?.userId; // Mengganti mahasiswaId dengan userId
+
+  //     if (!userId) {
+  //       alert('Gagal mendapatkan data mahasiswa.');
+  //       return;
+  //     }
+  
+  //     // Menambahkan data pengajuan termasuk UUID user
+  //     await addDoc(collection(db, 'pengajuan-bimbingan'), {
+  //       dosen: selectedDosen,
+  //       userId: userId, // Menyimpan UUID user
+  //       pesan: pesan,
+  //       fileURL: fileURL,
+  //       status: 'pending',
+  //       timestamp: new Date(),
+  //     });
+  
+  //     alert('Pengajuan berhasil dikirim!');
+  //     onClose(); 
+  //   } catch (error) {
+  //     console.error('Error during file upload:', error);
+  //     alert('Terjadi kesalahan saat mengunggah file.');
+  //   } finally {
+  //     setIsUploading(false);
+  //   }
+  // };
+
+  const handleUploadToCloudinary = async () => {
     if (!file || !selectedDosen) {
       alert('Mohon lengkapi data terlebih dahulu!');
       return;
@@ -43,32 +86,45 @@ const ModalPengajuan = ({ isOpen, onClose }: ModalPengajuanProps) => {
     setIsUploading(true);
   
     try {
-      const storageRef = ref(storage, `bimbingan/${selectedDosen}/${file.name}`);
-      await uploadBytes(storageRef, file);
-      const fileURL = await getDownloadURL(storageRef);
-  
-      // Mengambil userId mahasiswa dari localStorage
-      const storedProfile = localStorage.getItem('userProfile');
-      const userProfile = storedProfile ? JSON.parse(storedProfile) : null;
-      const userId = userProfile?.userId; // Mengganti mahasiswaId dengan userId
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('upload_preset', 'upload_file'); // Ganti dengan preset Cloudinary Anda
 
-      if (!userId) {
-        alert('Gagal mendapatkan data mahasiswa.');
-        return;
-      }
-  
-      // Menambahkan data pengajuan termasuk UUID user
-      await addDoc(collection(db, 'pengajuan-bimbingan'), {
-        dosen: selectedDosen,
-        userId: userId, // Menyimpan UUID user
-        pesan: pesan,
-        fileURL: fileURL,
-        status: 'pending',
-        timestamp: new Date(),
+      // Kirim file ke Cloudinary
+      const response = await fetch('https://api.cloudinary.com/v1_1/dtswoxdm7/upload', {
+        method: 'POST',
+        body: formData,
       });
-  
-      alert('Pengajuan berhasil dikirim!');
-      onClose(); 
+
+      const data = await response.json();
+      if (data.secure_url) {
+        const fileURL = data.secure_url;
+
+        // Mengambil userId mahasiswa dari localStorage
+        const storedProfile = localStorage.getItem('userProfile');
+        const userProfile = storedProfile ? JSON.parse(storedProfile) : null;
+        const userId = userProfile?.userId;
+
+        if (!userId) {
+          alert('Gagal mendapatkan data mahasiswa.');
+          return;
+        }
+
+        // Menambahkan data pengajuan termasuk UUID user
+        await addDoc(collection(db, 'pengajuan-bimbingan'), {
+          dosen: selectedDosen,
+          userId: userId, // Menyimpan UUID user
+          pesan: pesan,
+          fileURL: fileURL,
+          status: 'pending',
+          timestamp: new Date(),
+        });
+
+        alert('Pengajuan berhasil dikirim!');
+        onClose(); 
+      } else {
+        alert('Terjadi kesalahan saat meng-upload file.');
+      }
     } catch (error) {
       console.error('Error during file upload:', error);
       alert('Terjadi kesalahan saat mengunggah file.');
@@ -112,7 +168,7 @@ const ModalPengajuan = ({ isOpen, onClose }: ModalPengajuanProps) => {
             Batal
           </button>
           <button
-            onClick={handleUploadToFirebase}
+            onClick={handleUploadToCloudinary}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg"
             disabled={isUploading}
           >

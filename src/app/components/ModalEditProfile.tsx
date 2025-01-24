@@ -5,6 +5,7 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/firebase/firebaseconfig';
 import { getAuth, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import cloudinary from '@/lib/cloudinary';
 
 interface UserProfile {
   name: string;
@@ -45,13 +46,46 @@ const ModalEditProfile: React.FC<ModalEditProfileProps> = ({
     }
   }, []);
 
+
+//  cloudinary 
   const handleUploadPhoto = async (): Promise<string | null> => {
     if (!photoFile || !userProfile) return userProfile?.photoURL || null;
-    const storage = getStorage();
-    const photoRef = ref(storage, `profilePictures/${userProfile.userId}`);
-    await uploadBytes(photoRef, photoFile);
-    return await getDownloadURL(photoRef);
+  
+    const formData = new FormData();
+    formData.append('file', photoFile); // Menambahkan file yang akan diupload
+    formData.append('upload_preset', 'bimbingan_preset');  // Ganti dengan nama preset unsigned Anda
+  
+    try {
+      // Menggunakan fetch untuk mengupload ke Cloudinary
+      const response = await fetch('https://api.cloudinary.com/v1_1/dtswoxdm7/image/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      const data = await response.json();
+  
+      // Mengembalikan URL gambar yang diupload
+      if (data.secure_url) {
+        return data.secure_url;
+      } else {
+        setError('Gagal mengupload foto. Silakan coba lagi.');
+        return null;
+      }
+    } catch (error) {
+      setError('Gagal mengupload foto. Silakan coba lagi.');
+      return null;
+    }
   };
+
+  // storage firebase 
+
+  // const handleUploadPhoto = async (): Promise<string | null> => {
+  //   if (!photoFile || !userProfile) return userProfile?.photoURL || null;
+  //   const storage = getStorage();
+  //   const photoRef = ref(storage, `profilePictures/${userProfile.userId}`);
+  //   await uploadBytes(photoRef, photoFile);
+  //   return await getDownloadURL(photoRef);
+  // };
 
   const handleSaveChanges = async () => {
     if (!userProfile) {
